@@ -9,9 +9,11 @@ HA4FPAI 已转入重构期，其默认分支 `riir` 仅作「指针 + 分支地�
 2026-11-11 起，本仓库由组织 [WCIS-Team](https://github.com/WCIS-Team) 迁出，归属个人账号 [takomitkm](https://github.com/takomitkm)：由于太菜了没能晋级fpgachina且该项目完全由我个人创建，遂迁出WCIS-Team。旧地址 <https://github.com/WCIS-Team/loomos> 由 GitHub 自动重定向到本仓库，提交历史完整保留。
 
 todo
-[]agent四件套
-[]用户文档规则
-[]context7 4 Rust
+
+- [ ] agent四件套
+- [ ] 用户文档规则
+- [ ] context7 4 Rust
+- [ ] GitHub Actions + Environments + Deployments + 自定义部署器。
 
 ## 上游分支地图（HA4FPAI）
 
