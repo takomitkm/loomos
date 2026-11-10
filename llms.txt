@@ -1,0 +1,42 @@
+docs/
+├── dev/
+│   ├── baseline/                    # 通用设计原稿（01–10 + README，共 11 篇），永久只读
+│   ├── architecture/                # 跨平台架构约束与接口规范（现行版，编号镜像 baseline）
+│   │   ├── 01-architecture.md
+│   │   ├── 02-roadmap.md
+│   │   ├── 03-os-runtime.md
+│   │   ├── 04-configuration-service.md
+│   │   ├── 05-inference-orchestration.md              # 推理编排通用契约
+│   │   ├── 06-device-framework.md
+│   │   ├── 08-validation-and-dependency-policy.md
+│   │   ├── 09-execution-checklist.md
+│   │   ├── 10-decisions-and-open-questions.md
+│   │   ├── 11-execution-and-resource-model.md         # 新增：核亲和 / 预算 / 实施等级
+│   │   ├── 12-resource-lease-and-buffer-ownership.md  # 新增：租约 / Buffer 所有权
+│   │   └── 13-failure-classification-and-recovery.md  # 新增：故障分级 / 恢复契约
+│   └── platforms/
+│       ├── FMQL30TAI676H/           # 当前机型（FMQL30TAI676H 悟净）的具体落地设计
+│       │   ├── 03-os-runtime.md
+│       │   ├── 05-inference-zg330.md
+│       │   ├── 07-platform-baseline.md
+│       │   ├── 10-decisions-and-open-questions.md
+│       │   ├── 11-cpu-resource-allocation.md
+│       │   ├── 12-原生HMI深浅主题切换SOP.md           # 本板 HMI 深浅主题切换 SOP
+│       │   └── ZG330平台能力边界-原始调查记录.md
+│       ├── MEOW R16 24/             # 我的电脑
+│       └── WIN11-HV1/               # Hyper-V
+└── user/
+    └── README.md
+
+编号规则（**以后新文档一律照此办理**）
+- 01–10 是 baseline 的原始主题号；architecture 与 platforms **沿用同一套编号**，不另起炉灶
+- 11+ 是各层自己的新增主题（architecture 的 11/12/13 与 platforms 的 11 互不相干，按所在层读）
+- **新增主题时：先看它属于哪一层，再在该层顺延编号；同一主题在两层各有一篇时，用同一个号**
+- **07 在 architecture 层留空**：平台基线天然是板级事实，没有跨机型版本
+
+规则
+- baseline   = 冻结原稿，只读不改
+- architecture = 跨机型必须成立的约束与接口；一句话搬到别的板仍成立 ⇒ 放这里
+- platforms/<机型> = 该机型怎么满足 + 实测证据；不成立 ⇒ 放这里
+- **不重复**：一个事实只写一处。platforms 不复制 architecture 的定义，只填本机适配表并链接上去；
+  architecture 不复制 baseline 的原文，只写"现行版差异"或直接引用
