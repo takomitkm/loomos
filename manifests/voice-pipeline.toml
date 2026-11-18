@@ -1,0 +1,87 @@
+# 组件 Manifest（architecture/03 §3.5：第一版 TOML 加载，运行时解析为类型化数据）
+# 装配检查：provides/requires/capabilities 与 CapabilityStore 授权逐一对应。
+# 说明：normosd 当前以代码内等价 Manifest 装配（见 crates/normosd/src/system.rs）；
+# 本目录是声明的正本，加载器接入后以此为准。
+
+[voice-pipeline]
+id = "voice-pipeline"
+version = 1
+provides = ["voice-pipeline.v1"]
+requires = ["nlu.v1", "executor.v1"]
+capabilities = ["device.command", "config.write"]
+resources = []
+execution = ["same-address-space"]
+
+[voice-pipeline.health]
+kind = "heartbeat"
+interval_ms = 5000
+
+[voice-pipeline.recovery]
+max_process_restarts = 3
+allow_device_reset = false
+hardware_note = "语音链无硬件依赖；挂死按 L1 处理"
+
+[nlu]
+id = "nlu"
+version = 1
+provides = ["nlu.v1"]
+requires = []
+capabilities = []
+execution = ["same-address-space"]
+
+[nlu.health]
+kind = "none"
+interval_ms = 0
+
+[nlu.recovery]
+max_process_restarts = 3
+allow_device_reset = false
+
+[executor]
+id = "executor"
+version = 1
+provides = ["executor.v1"]
+requires = ["nlu.v1", "device-registry.v1"]
+capabilities = ["device.command"]
+execution = ["same-address-space"]
+
+[executor.health]
+kind = "heartbeat"
+interval_ms = 5000
+
+[executor.recovery]
+max_process_restarts = 3
+allow_device_reset = false
+
+[device-registry]
+id = "device-registry"
+version = 1
+provides = ["device-registry.v1"]
+requires = ["config-service.v1"]
+capabilities = ["device.command"]
+execution = ["same-address-space"]
+
+[device-registry.health]
+kind = "heartbeat"
+interval_ms = 5000
+
+[device-registry.recovery]
+max_process_restarts = 3
+allow_device_reset = false
+hardware_note = "设备挂死按 FailureClass::DeviceHang 升级人工；不自动 reset"
+
+[config-service]
+id = "config-service"
+version = 1
+provides = ["config-service.v1"]
+requires = []
+capabilities = []
+execution = ["same-address-space"]
+
+[config-service.health]
+kind = "heartbeat"
+interval_ms = 5000
+
+[config-service.recovery]
+max_process_restarts = 3
+allow_device_reset = false

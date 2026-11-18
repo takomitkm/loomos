@@ -1,0 +1,17 @@
+[package]
+name = "normos-executor"
+version.workspace = true
+edition.workspace = true
+description = "normos 执行器：双通道分流（直连/语法）、固定应答、危险动作闸口、TTS 文本映射"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+normos-runtime = { workspace = true }
+normos-device = { workspace = true }
+normos-nlu = { workspace = true }
+normos-home = { workspace = true }
+
+[dev-dependencies]

@@ -1,0 +1,26 @@
+[package]
+name = "normos-cli"
+version.workspace = true
+edition.workspace = true
+description = "normos CLI：gen-fixtures / smoke（一键原型验收）/ replay / say / status"
+
+[[bin]]
+name = "normos-cli"
+path = "src/main.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+normos-runtime = { workspace = true }
+normos-device = { workspace = true }
+normos-audio = { workspace = true }
+normos-nlu = { workspace = true }
+normos-home = { workspace = true }
+normos-executor = { workspace = true }
+normosd = { path = "../normosd" }
+normos-vision = { workspace = true }
+
+[dev-dependencies]

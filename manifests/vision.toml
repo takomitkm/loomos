@@ -1,0 +1,19 @@
+# 视频路组件 Manifest（自研可拆卸，PROTOTYPE.md §2.5）
+
+[vision]
+id = "vision"
+version = 2
+provides = ["vision.v2"]
+requires = ["device-registry.v1", "config-service.v1"]
+capabilities = ["device.command", "config.read"]
+resources = []
+execution = ["same-address-space"]
+
+[vision.health]
+kind = "heartbeat"
+interval_ms = 5000
+
+[vision.recovery]
+max_process_restarts = 3
+allow_device_reset = false
+hardware_note = "相机/采集硬件挂死按 FailureClass::DeviceHang 升级人工；NPU 侧契约见 normos-inference"

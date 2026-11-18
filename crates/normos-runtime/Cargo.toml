@@ -1,0 +1,13 @@
+[package]
+name = "normos-runtime"
+version.workspace = true
+edition.workspace = true
+description = "normos 系统运行时：ID、资源租约、Capability、配置服务、组件生命周期、Supervisor、事件"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]

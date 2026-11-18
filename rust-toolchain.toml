@@ -1,0 +1,4 @@
+# 工具链锁定（docs/dev/architecture/08 §8.7：版本锁定发生在候选验证之后）
+# 候选验证记录见 docs/dev/EVIDENCE.md；升级前须重跑 agent/run-prototype.sh。
+[toolchain]
+channel = "1.99.1"

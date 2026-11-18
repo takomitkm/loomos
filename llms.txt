@@ -40,3 +40,36 @@ docs/
 - platforms/<机型> = 该机型怎么满足 + 实测证据；不成立 ⇒ 放这里
 - **不重复**：一个事实只写一处。platforms 不复制 architecture 的定义，只填本机适配表并链接上去；
   architecture 不复制 baseline 的原文，只写"现行版差异"或直接引用
+
+
+---
+
+# normos 原型新增结构（2026-11-19 并入）
+
+crates/
+├── normos-runtime/      # ids / resource(租约) / capability / config(配置服务) / component(生命周期) / supervisor(故障恢复) / event
+├── normos-inference/    # 推理编排：排队/准入/取消契约、Buffer 所有权 typestate、单 Owner、隔离区
+├── normos-device/       # 设备核心 + mock 提供者 + 板端 HTTP 适配(8091/8092/8093)
+├── normos-audio/        # 数据面：WAV、重采样(linear/decimate3-mavg3)、能量门/VAD、KWS/ASR/TTS 档位（默认档全自检）
+├── normos-nlu/          # 实体注册表、中文规则语法、直连整句表、klar v2 外部引擎适配契约
+├── normos-vision/       # 视频路（自研可拆卸）：帧源→检测→嵌入→匹配→PAD→录制/直播
+├── normos-home/         # 意图→设备操作、四道闸开门、声纹 mock、危险动作一次性确认
+├── normos-executor/     # 双通道执行器 + 固定应答 + TTS 文本映射
+├── normosd/             # 装配(System, VisionMode 可拆卸) + 语音管线 + 控制台 HTTP（10900）
+└── normos-cli/          # gen-fixtures / smoke(一键验收) / replay / say / serve
+
+agent/
+├── run-prototype.sh     # 一键执行：自检→cargo test→夹具→smoke→报告（退出码即验收）
+└── tasks/               # 可直接交给 agent 的任务定义（原型复验 / unsafe 重构 / 接真实引擎）
+
+manifests/                # 组件 Manifest（TOML）：voice-pipeline / vision
+
+docs/dev 新增（上文编号规则同样适用）：
+- engineering/                 # 工程纲要包：01-总体设计纲要 / 02-Agent执行规范 / templates(安全契约模板)
+- PROTOTYPE.md                 # 原型范围：旧功能保留/删减清单 + 视频路自研(§2.5) + 真实引擎接入点
+- EVIDENCE.md                  # 实测数据台账（旧板读数 + 本仓库验证记录）
+
+新增规则：
+- engineering = 工程纪律（Agent 行为规范 / unsafe / 契约模板），与机型无关
+- **验收正本**：reports/prototype-report.md 由 agent/run-prototype.sh 生成，不得手改
+- crates 的模块职责一句话见各 crate 的 lib.rs 头注释；跨 crate 契约进 docs/dev/architecture/

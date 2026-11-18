@@ -1,0 +1,8 @@
+/target
+Cargo.lock.bak
+reports/
+!reports/.gitkeep
+fixtures/
+!fixtures/.gitkeep
+var/
+*.tmp
