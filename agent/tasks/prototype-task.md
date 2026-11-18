@@ -1,4 +1,4 @@
-# Agent Task: 复跑/复验 normos 原型
+# Agent Task: 复跑/复验 loomos 原型
 
 ## Objective
 
@@ -9,7 +9,7 @@
 ## Steps
 
 1. `bash agent/run-prototype.sh`。退出码 0 即验收通过。
-2. 若失败：读 `reports/prototype-report.md` 场景表与 `/tmp/normos-*.log`，按
+2. 若失败：读 `reports/prototype-report.md` 场景表与 `/tmp/loomos-*.log`，按
    AGENTS.md §5 的任务路径修复；**不得**通过删测试/改期望让脚本变绿——
    期望变更必须给出行为依据。
 3. 复跑直到全绿，然后汇报：

@@ -1,4 +1,4 @@
-# AGENTS.md — normos 仓库 Agent 执行规范
+# AGENTS.md — loomos 仓库 Agent 执行规范
 
 > 本文件是 Agent 在本仓库工作的**最高行为规范**。它合并了
 > `docs/dev/engineering/02-Agent执行规范.md`（Rust/unsafe 纪律）与
@@ -21,7 +21,7 @@ bash agent/run-prototype.sh --fast   # 跳过已通过的测试（仅快速 smok
 - 退出码 0 = 全绿；非 0 = 有失败，**先看 `reports/prototype-report.md` 再改代码**。
 - 报告是本仓库的验收正本；不要手工编辑报告，让它由脚本生成。
 - 任何架构性修改（新 crate、改状态机、改契约）必须让 smoke 的场景表保持 12/12 PASS，
-  或在 `crates/normos-cli` 的 `expectations()` 中**显式更新期望并说明原因**。
+  或在 `crates/loomos-cli` 的 `expectations()` 中**显式更新期望并说明原因**。
 
 ## 2. 强制规则（违者变更必须回滚）
 
@@ -30,7 +30,7 @@ bash agent/run-prototype.sh --fast   # 跳过已通过的测试（仅快速 smok
 3. 不得凭猜测生成 `SAFETY:` 注释、测试结果或证明结论。
 4. 不得把「测试通过」「编译通过」写成 soundness / 证明——证据分级见 §4。
 5. 不得假设 `Drop` 一定执行：涉及资源回收的协议必须有内核侧兜底
-   （参考 `normos-runtime::resource::LeaseManager` 的 Orphaned/清扫设计）。
+   （参考 `loomos-runtime::resource::LeaseManager` 的 Orphaned/清扫设计）。
 6. 实施等级如实上报：`enforced` 必须有设置后读回证据；做不到就写
    `best_effort(失效条件)` 或 `unsupported`（architecture/11 §11.3.2）。
 7. `Unknown` 不得映射成 `Failed`（设备/推理操作）；超时不等于设备已停止访问 Buffer。
@@ -76,8 +76,8 @@ bash agent/run-prototype.sh --fast   # 跳过已通过的测试（仅快速 smok
 
 | 任务 | 做法 |
 |---|---|
-| 新增一条语音指令 | `normos-nlu` 加意图/短语（若直连，加进 `direct_table`；语法类加规则）→ `normos-home::ActionRegistry` 加映射 → `normos-cli::expectations()` 加期望 → 加夹具（`standard_fixtures()`）→ smoke 验证 |
-| 新增一种设备 | 实现 `DeviceProvider`（mock 先行）→ 注册进 `normosd::System::assemble` → Capability 授权 → （可选）HTTP 适配器 + 板端契约测试 |
+| 新增一条语音指令 | `loomos-nlu` 加意图/短语（若直连，加进 `direct_table`；语法类加规则）→ `loomos-home::ActionRegistry` 加映射 → `loomos-cli::expectations()` 加期望 → 加夹具（`standard_fixtures()`）→ smoke 验证 |
+| 新增一种设备 | 实现 `DeviceProvider`（mock 先行）→ 注册进 `loomosd::System::assemble` → Capability 授权 → （可选）HTTP 适配器 + 板端契约测试 |
 | 换真实引擎（sherpa-onnx / klar / 厂商 NPU） | 实现对应 trait（`AsrBackend`/`TtsBackend`/`KwsBackend`/`VadBackend`/`Backend`/`ExternalNlu`），feature-gate，**默认档保持 echo/sine 全自检** |
 | unsafe 重构任务 | 读 `agent/tasks/unsafe-refactor.md`，按其中流程与停止条件执行 |
 | 配置变更 | 走 Configuration Service（Schema 校验 + Revision + Outbox），不要旁路读文件 |

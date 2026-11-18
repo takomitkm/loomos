@@ -1,0 +1,17 @@
+[package]
+name = "loomos-home"
+version.workspace = true
+edition.workspace = true
+description = "loomos 家居域：意图→设备操作映射、四道闸开门、声纹 mock、危险动作一次性确认"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+loomos-runtime = { workspace = true }
+loomos-device = { workspace = true }
+loomos-nlu = { workspace = true }
+loomos-audio = { workspace = true }
+
+[dev-dependencies]

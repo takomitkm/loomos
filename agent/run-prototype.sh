@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# normos 一键原型执行器 —— Agent 的唯一入口。
+# loomos 一键原型执行器 —— Agent 的唯一入口。
 #
 # 用法：
 #   bash agent/run-prototype.sh          # 全流程
@@ -35,30 +35,30 @@ step "1. cargo test --workspace（约 100 项）"
 if [[ $FAST -eq 1 ]]; then
     echo "  (--fast: 跳过)"
 else
-    if cargo test --workspace 2>&1 | tee /tmp/normos-test.log | grep -qE "test result: FAILED"; then
-        abort "测试有失败项；查看 /tmp/normos-test.log"
+    if cargo test --workspace 2>&1 | tee /tmp/loomos-test.log | grep -qE "test result: FAILED"; then
+        abort "测试有失败项；查看 /tmp/loomos-test.log"
         fail=$((fail+1))
     else
-        TEST_COUNT="$(grep -oE 'test result: ok\. [0-9]+' /tmp/normos-test.log | awk '{s+=$4} END {print s}')"
+        TEST_COUNT="$(grep -oE 'test result: ok\. [0-9]+' /tmp/loomos-test.log | awk '{s+=$4} END {print s}')"
         pass "cargo test 全绿（${TEST_COUNT:-?} 项）"
     fi
 fi
 
 step "2. 生成语音夹具（fixtures/）"
-if cargo run -q -p normos-cli -- gen-fixtures fixtures >/tmp/normos-gen.log 2>&1; then
+if cargo run -q -p loomos-cli -- gen-fixtures fixtures >/tmp/loomos-gen.log 2>&1; then
     pass "12 条中文场景夹具（48 kHz wav + manifest）"
 else
-    abort "夹具生成失败：$(tail -2 /tmp/normos-gen.log)"
+    abort "夹具生成失败：$(tail -2 /tmp/loomos-gen.log)"
     fail=$((fail+1))
 fi
 
 step "3. 装配原型并回放全场景（smoke）"
-if cargo run -q -p normos-cli -- smoke fixtures --out reports >/tmp/normos-smoke.log 2>&1; then
+if cargo run -q -p loomos-cli -- smoke fixtures --out reports >/tmp/loomos-smoke.log 2>&1; then
     pass "smoke 12/12 PASS"
-    grep -E "^  [✓✗]" /tmp/normos-smoke.log || true
+    grep -E "^  [✓✗]" /tmp/loomos-smoke.log || true
 else
     abort "smoke 有失败："
-    grep -E "^  [✓✗]" /tmp/normos-smoke.log || tail -5 /tmp/normos-smoke.log
+    grep -E "^  [✓✗]" /tmp/loomos-smoke.log || tail -5 /tmp/loomos-smoke.log
     fail=$((fail+1))
 fi
 

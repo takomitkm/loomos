@@ -1,0 +1,14 @@
+[package]
+name = "loomos-device"
+version.workspace = true
+edition.workspace = true
+description = "loomos 设备核心：描述符/提供者/生命周期/租约/Operation/遥测/故障 + mock 提供者 + 板端 HTTP 适配"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+loomos-runtime = { workspace = true }
+
+[dev-dependencies]

@@ -44,19 +44,19 @@ docs/
 
 ---
 
-# normos 原型新增结构（2026-11-19 并入）
+# loomos 原型新增结构（2026-11-19 并入）
 
 crates/
-├── normos-runtime/      # ids / resource(租约) / capability / config(配置服务) / component(生命周期) / supervisor(故障恢复) / event
-├── normos-inference/    # 推理编排：排队/准入/取消契约、Buffer 所有权 typestate、单 Owner、隔离区
-├── normos-device/       # 设备核心 + mock 提供者 + 板端 HTTP 适配(8091/8092/8093)
-├── normos-audio/        # 数据面：WAV、重采样(linear/decimate3-mavg3)、能量门/VAD、KWS/ASR/TTS 档位（默认档全自检）
-├── normos-nlu/          # 实体注册表、中文规则语法、直连整句表、klar v2 外部引擎适配契约
-├── normos-vision/       # 视频路（自研可拆卸）：帧源→检测→嵌入→匹配→PAD→录制/直播
-├── normos-home/         # 意图→设备操作、四道闸开门、声纹 mock、危险动作一次性确认
-├── normos-executor/     # 双通道执行器 + 固定应答 + TTS 文本映射
-├── normosd/             # 装配(System, VisionMode 可拆卸) + 语音管线 + 控制台 HTTP（10900）
-└── normos-cli/          # gen-fixtures / smoke(一键验收) / replay / say / serve
+├── loomos-runtime/      # ids / resource(租约) / capability / config(配置服务) / component(生命周期) / supervisor(故障恢复) / event
+├── loomos-inference/    # 推理编排：排队/准入/取消契约、Buffer 所有权 typestate、单 Owner、隔离区
+├── loomos-device/       # 设备核心 + mock 提供者 + 板端 HTTP 适配(8091/8092/8093)
+├── loomos-audio/        # 数据面：WAV、重采样(linear/decimate3-mavg3)、能量门/VAD、KWS/ASR/TTS 档位（默认档全自检）
+├── loomos-nlu/          # 实体注册表、中文规则语法、直连整句表、klar v2 外部引擎适配契约
+├── loomos-vision/       # 视频路（自研可拆卸）：帧源→检测→嵌入→匹配→PAD→录制/直播
+├── loomos-home/         # 意图→设备操作、四道闸开门、声纹 mock、危险动作一次性确认
+├── loomos-executor/     # 双通道执行器 + 固定应答 + TTS 文本映射
+├── loomosd/             # 装配(System, VisionMode 可拆卸) + 语音管线 + 控制台 HTTP（10900）
+└── loomos-cli/          # gen-fixtures / smoke(一键验收) / replay / say / serve
 
 agent/
 ├── run-prototype.sh     # 一键执行：自检→cargo test→夹具→smoke→报告（退出码即验收）

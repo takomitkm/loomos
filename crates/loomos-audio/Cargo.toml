@@ -1,0 +1,13 @@
+[package]
+name = "loomos-audio"
+version.workspace = true
+edition.workspace = true
+description = "loomos 音频数据面：WAV、重采样（linear/decimate3-mavg3）、能量门/VAD、KWS/ASR/TTS 档位"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]

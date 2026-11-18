@@ -1,6 +1,6 @@
 # 组件 Manifest（architecture/03 §3.5：第一版 TOML 加载，运行时解析为类型化数据）
 # 装配检查：provides/requires/capabilities 与 CapabilityStore 授权逐一对应。
-# 说明：normosd 当前以代码内等价 Manifest 装配（见 crates/normosd/src/system.rs）；
+# 说明：loomosd 当前以代码内等价 Manifest 装配（见 crates/loomosd/src/system.rs）；
 # 本目录是声明的正本，加载器接入后以此为准。
 
 [voice-pipeline]

@@ -1,0 +1,26 @@
+[package]
+name = "loomosd"
+version.workspace = true
+edition.workspace = true
+description = "loomos 装配与控制台服务（原 10900 统一控制台的新架构版本）"
+
+[[bin]]
+name = "loomosd"
+path = "src/main.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+loomos-runtime = { workspace = true }
+loomos-device = { workspace = true }
+loomos-audio = { workspace = true }
+loomos-nlu = { workspace = true }
+loomos-home = { workspace = true }
+loomos-executor = { workspace = true }
+loomos-vision = { workspace = true }
+loomos-inference = { workspace = true }
+
+[dev-dependencies]

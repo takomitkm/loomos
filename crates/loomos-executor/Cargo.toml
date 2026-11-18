@@ -1,0 +1,17 @@
+[package]
+name = "loomos-executor"
+version.workspace = true
+edition.workspace = true
+description = "loomos 执行器：双通道分流（直连/语法）、固定应答、危险动作闸口、TTS 文本映射"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+loomos-runtime = { workspace = true }
+loomos-device = { workspace = true }
+loomos-nlu = { workspace = true }
+loomos-home = { workspace = true }
+
+[dev-dependencies]

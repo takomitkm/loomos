@@ -1,16 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/normos-runtime",
-    "crates/normos-inference",
-    "crates/normos-device",
-    "crates/normos-audio",
-    "crates/normos-nlu",
-    "crates/normos-home",
-    "crates/normos-executor",
-    "crates/normos-vision",
-    "crates/normosd",
-    "crates/normos-cli",
+    "crates/loomos-runtime",
+    "crates/loomos-inference",
+    "crates/loomos-device",
+    "crates/loomos-audio",
+    "crates/loomos-nlu",
+    "crates/loomos-home",
+    "crates/loomos-executor",
+    "crates/loomos-vision",
+    "crates/loomosd",
+    "crates/loomos-cli",
 ]
 
 [workspace.package]
@@ -18,7 +18,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/takomitkm/loomos"
-description = "normos — HA4FPAI (板上语音控制栈) 的可组合、高保证 Rust 重构原型"
+description = "loomos — HA4FPAI (板上语音控制栈) 的可组合、高保证 Rust 重构原型"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -28,14 +28,14 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter", "std"] }
 toml = "0.8"
 
-normos-runtime = { path = "crates/normos-runtime" }
-normos-inference = { path = "crates/normos-inference" }
-normos-device = { path = "crates/normos-device" }
-normos-audio = { path = "crates/normos-audio" }
-normos-nlu = { path = "crates/normos-nlu" }
-normos-home = { path = "crates/normos-home" }
-normos-vision = { path = "crates/normos-vision" }
-normos-executor = { path = "crates/normos-executor" }
+loomos-runtime = { path = "crates/loomos-runtime" }
+loomos-inference = { path = "crates/loomos-inference" }
+loomos-device = { path = "crates/loomos-device" }
+loomos-audio = { path = "crates/loomos-audio" }
+loomos-nlu = { path = "crates/loomos-nlu" }
+loomos-home = { path = "crates/loomos-home" }
+loomos-vision = { path = "crates/loomos-vision" }
+loomos-executor = { path = "crates/loomos-executor" }
 
 
 [profile.release]

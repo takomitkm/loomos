@@ -16,4 +16,4 @@ interval_ms = 5000
 [vision.recovery]
 max_process_restarts = 3
 allow_device_reset = false
-hardware_note = "相机/采集硬件挂死按 FailureClass::DeviceHang 升级人工；NPU 侧契约见 normos-inference"
+hardware_note = "相机/采集硬件挂死按 FailureClass::DeviceHang 升级人工；NPU 侧契约见 loomos-inference"

@@ -3,7 +3,7 @@
 
 ---
 
-## normos 原型用户面（2026-11-19 并入）
+## loomos 原型用户面（2026-11-19 并入）
 
 ### 用户文档规则
 
@@ -17,7 +17,7 @@
 
 ### 当前接口（原型，默认档全 mock 全自检）
 
-- 启动：`cargo run -p normos-cli -- serve`（控制台 http://127.0.0.1:10900）
+- 启动：`cargo run -p loomos-cli -- serve`（控制台 http://127.0.0.1:10900）
 - 文本执行：`POST /handle_text {"text":"小克，打开客厅的灯"}` → ExecReport（意图/动作/回执）
 - 直接动作：`POST /action {"intent":"HassTurnOn","slots":{"entity_id":"light.keting"}}`
 - 状态/实体/事件：`GET /status`、`GET /entities`、`GET /events?after=0`、`GET /health`

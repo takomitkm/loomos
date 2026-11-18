@@ -1,4 +1,4 @@
-# PROTOTYPE — normos 原型：范围、取舍与真实引擎接入
+# PROTOTYPE — loomos 原型：范围、取舍与真实引擎接入
 
 > 本文回答三个问题：原型做什么、相对旧系统（HA4FPAI 全部分支）删了什么留了什么、
 > 真实引擎/真机怎么接。架构依据见 `architecture/`；板级事实见 `platforms/`。
@@ -36,18 +36,18 @@
 
 | 旧功能 | 旧位置 | 新位置 | 说明 |
 |---|---|---|---|
-| 双通道执行器（直连表 + klar） | `klar/klar_executor.py` | `normos-nlu` + `normos-executor` | 直连表全量移植（含「裸重启不进表」「只整句匹配」纪律） |
-| 板端 HTTP 设备 API（8091/8092/8093） | `boards/` + WCIS 系服务 | `normos-device::HttpBoardAdapter` + mock 提供者 | 契约级复刻：503=video_no_frame、mode 只收 off/auto/manual、回读校验 |
-| 四道闸开门 | `boards/door_unlock.py` | `normos-home::door` | 口令 10 句双向包含 → 人脸 → PAD（warn/enforce 双档）→ 声纹；未标定提醒不阻断 |
-| 声纹录入/校验 | `boards/voiceprint.py` | `normos-home::voiceprint` | 流程/存储格式/阈值 0.5 同构；嵌入为 mock 滤波器组（真 campplus 走适配器） |
-| 实体注册表 | `klar/make_registry.py` | `normos-nlu::registry` | HA `.storage` 模拟弃用，直接结构化 JSON；映射质量 `Partial`（如实标注） |
-| 统一控制台 | `boards/console.py`(10900) | `normosd::console` | /status /entities /events /handle_text /action /config |
-| 配置期望/生效分离 | `control/settings.py` | `normos-runtime::config` | Desired/Applied/Observed + 未消费永不标 applied |
-| 危险动作确认 | `control/commands.py` | `normos-home::confirm` | 一次性确认码：绑定动作+参数摘要+主体+TTL，用过即废 |
-| 事件游标读取 | `control/events.py` | `normos-runtime::event` | producer_id + 全局 seq + read_after |
-| 重采样选型 | `docs/RESAMPLER-CHOICE.md` | `normos-audio::dsp` | linear 升采样 / decimate3-mavg3 降采样（实测依据，见 EVIDENCE.md） |
-| 播报落盘 | `speak.py` → `/mnt/data/klar/speech/*.wav` | `normosd::voice` → `reports/speech/*.wav` | 板上无声卡 → WAV 落盘纪律不变 |
-| TTS 切句 | `lang/split/tts_split.py` | `normos-audio::tts::split_for_tts` | max_chars=20 严格不丢字口径 |
+| 双通道执行器（直连表 + klar） | `klar/klar_executor.py` | `loomos-nlu` + `loomos-executor` | 直连表全量移植（含「裸重启不进表」「只整句匹配」纪律） |
+| 板端 HTTP 设备 API（8091/8092/8093） | `boards/` + WCIS 系服务 | `loomos-device::HttpBoardAdapter` + mock 提供者 | 契约级复刻：503=video_no_frame、mode 只收 off/auto/manual、回读校验 |
+| 四道闸开门 | `boards/door_unlock.py` | `loomos-home::door` | 口令 10 句双向包含 → 人脸 → PAD（warn/enforce 双档）→ 声纹；未标定提醒不阻断 |
+| 声纹录入/校验 | `boards/voiceprint.py` | `loomos-home::voiceprint` | 流程/存储格式/阈值 0.5 同构；嵌入为 mock 滤波器组（真 campplus 走适配器） |
+| 实体注册表 | `klar/make_registry.py` | `loomos-nlu::registry` | HA `.storage` 模拟弃用，直接结构化 JSON；映射质量 `Partial`（如实标注） |
+| 统一控制台 | `boards/console.py`(10900) | `loomosd::console` | /status /entities /events /handle_text /action /config |
+| 配置期望/生效分离 | `control/settings.py` | `loomos-runtime::config` | Desired/Applied/Observed + 未消费永不标 applied |
+| 危险动作确认 | `control/commands.py` | `loomos-home::confirm` | 一次性确认码：绑定动作+参数摘要+主体+TTL，用过即废 |
+| 事件游标读取 | `control/events.py` | `loomos-runtime::event` | producer_id + 全局 seq + read_after |
+| 重采样选型 | `docs/RESAMPLER-CHOICE.md` | `loomos-audio::dsp` | linear 升采样 / decimate3-mavg3 降采样（实测依据，见 EVIDENCE.md） |
+| 播报落盘 | `speak.py` → `/mnt/data/klar/speech/*.wav` | `loomosd::voice` → `reports/speech/*.wav` | 板上无声卡 → WAV 落盘纪律不变 |
+| TTS 切句 | `lang/split/tts_split.py` | `loomos-audio::tts::split_for_tts` | max_chars=20 严格不丢字口径 |
 
 ### 2.2 删减（旧有但原型不做，理由如下）
 
@@ -73,7 +73,7 @@
 
 ## 2.5 视频路自研（重做自 fmql30tai-sdi-npu-face-recognition）
 
-视频路不再只是「指向旧板 HTTP 服务的适配器」——`normos-vision` 按原仓库
+视频路不再只是「指向旧板 HTTP 服务的适配器」——`loomos-vision` 按原仓库
 （YuNet 检测 + MobileFaceNet 特征 + 双 MiniFASNet PAD + 录制/直播）的用途契约
 **自研重做**，且整体可拆卸：
 
@@ -102,7 +102,7 @@ ViewSession（ready/session 语义，manifest 只构造地址不代理分片）
 
 换任何一级引擎 = 实现对应 trait（`FaceDetector`/`FaceEmbedder`/`PadEngine`/
 `FrameSource`/`RecorderBackend`/`StreamEncoder`），真 YuNet/MobileFaceNet/
-MiniFASNet 经 `normos-inference::Backend` 单 Owner 编排接入（模板见
+MiniFASNet 经 `loomos-inference::Backend` 单 Owner 编排接入（模板见
 agent/tasks/add-real-engine.md §视频引擎）。
 
 ## 3. 真实引擎/真机接入
@@ -111,7 +111,7 @@ agent/tasks/add-real-engine.md §视频引擎）。
 |---|---|---|
 | sherpa-onnx KWS/VAD/ASR/TTS | `KwsBackend`/`VadBackend`/`AsrBackend`/`TtsBackend` 档位 | 唯一 onnxruntime；matcha 必须外挂 vocos；模型不进仓库 |
 | klar NLU 引擎 | `ExternalNlu`（HTTP /api/v2/parse） | decision.type=execute/clarify/confirm/reject 契约归一化 |
-| 厂商 NPU Runtime | `normos_inference::Backend` + FFI wrapper | C ABI 边界 catch 全部异常；同步阻塞无 cancel；Buffer 走 typestate+隔离区 |
+| 厂商 NPU Runtime | `loomos_inference::Backend` + FFI wrapper | C ABI 边界 catch 全部异常；同步阻塞无 cancel；Buffer 走 typestate+隔离区 |
 | 板端真实服务 | `HttpBoardAdapter`（已实现契约） | origin/鉴权不伪造；503→no frame |
 | FMQL30TAI676H 实机 | aarch64 交叉构建 + 上板 smoke | 依赖按 Host→Cross→Hardware 准入；板测数据回填 platforms/ |
 

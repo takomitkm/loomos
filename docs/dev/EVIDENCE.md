@@ -45,7 +45,7 @@
 | 升采样 22050→48000 | **linear 插值** | 16.6 ms/2s，比 polyphase 快 107 倍；真实语音频谱相关 0.9997 |
 | 降采样 48000→16000 | **decimate3-mavg3** | 3 点平均 3.6–9.9 ms，比 31 抽 sinc 快 11–14 倍；**ASR 识别结果逐字一致**；20 kHz 混叠压到 −12.3 dB |
 
-→ `normos-audio::dsp` 直接实现了这两个算法；测试断言 16 kHz（新 Nyquist）分量被精确消除、
+→ `loomos-audio::dsp` 直接实现了这两个算法；测试断言 16 kHz（新 Nyquist）分量被精确消除、
 8 kHz 处 −3.5 dB 与文档口径吻合。
 
 ### 1.4 平台事实（A/B，详见 platforms/FMQL30TAI676H/07-platform-baseline.md）
@@ -63,8 +63,8 @@
 
 | 项 | 读数 | 等级 | 来源 |
 |---|---|---|---|
-| cargo test --workspace | 135 项全绿（runtime 37 / vision 32 / audio 15 / home 13 / inference 12 / nlu 11 / executor 8 / normosd 4 / device 5） | T | `cargo test` |
-| smoke 场景 | 12/12 PASS（唤醒门控/四道闸/灯控/录制/状态/时间/对话/否定/未识别）；其中人脸识别经自研视频路流水线（Pipeline 模式） | T | `normos-cli smoke` |
+| cargo test --workspace | 135 项全绿（runtime 37 / vision 32 / audio 15 / home 13 / inference 12 / nlu 11 / executor 8 / loomosd 4 / device 5） | T | `cargo test` |
+| smoke 场景 | 12/12 PASS（唤醒门控/四道闸/灯控/录制/状态/时间/对话/否定/未识别）；其中人脸识别经自研视频路流水线（Pipeline 模式） | T | `loomos-cli smoke` |
 | 一键脚本 | `agent/run-prototype.sh` 退出码 0 | T | run-prototype.sh |
 | clippy | `--workspace --all-targets` 0 warning | T | CI 门禁 |
 | 依赖树 | 纯 Rust（serde/thiserror/tracing/toml），无 C 编译器依赖 | T | `cargo tree` |
@@ -72,7 +72,7 @@
 
 **未验证（Unverified，诚实清单）**：
 - aarch64 交叉构建在本机未执行（CI 中 `cargo check --target aarch64-unknown-linux-gnu`，宿主上已通过）；
-- normos-vision 的真引擎（YuNet/MobileFaceNet/MiniFASNet）未接入（mock 档；契约与接入点见 PROTOTYPE.md §2.5）；
+- loomos-vision 的真引擎（YuNet/MobileFaceNet/MiniFASNet）未接入（mock 档；契约与接入点见 PROTOTYPE.md §2.5）；
 - sherpa-onnx / klar / 厂商 NPU 适配器未实现（任务模板已备）；
 - 板上 RSS/延迟/稳定性未测（L2/L3 板测需人工窗口）。
 

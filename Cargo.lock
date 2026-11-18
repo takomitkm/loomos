@@ -30,6 +30,136 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
+name = "loomos-audio"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomos-cli"
+version = "0.1.0"
+dependencies = [
+ "loomos-audio",
+ "loomos-device",
+ "loomos-executor",
+ "loomos-home",
+ "loomos-nlu",
+ "loomos-runtime",
+ "loomos-vision",
+ "loomosd",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "loomos-device"
+version = "0.1.0"
+dependencies = [
+ "loomos-runtime",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomos-executor"
+version = "0.1.0"
+dependencies = [
+ "loomos-device",
+ "loomos-home",
+ "loomos-nlu",
+ "loomos-runtime",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomos-home"
+version = "0.1.0"
+dependencies = [
+ "loomos-audio",
+ "loomos-device",
+ "loomos-nlu",
+ "loomos-runtime",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomos-inference"
+version = "0.1.0"
+dependencies = [
+ "loomos-runtime",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomos-nlu"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomos-runtime"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomos-vision"
+version = "0.1.0"
+dependencies = [
+ "loomos-device",
+ "loomos-runtime",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loomosd"
+version = "0.1.0"
+dependencies = [
+ "loomos-audio",
+ "loomos-device",
+ "loomos-executor",
+ "loomos-home",
+ "loomos-inference",
+ "loomos-nlu",
+ "loomos-runtime",
+ "loomos-vision",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "matchers"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -43,136 +173,6 @@ name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
-
-[[package]]
-name = "normos-audio"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normos-cli"
-version = "0.1.0"
-dependencies = [
- "normos-audio",
- "normos-device",
- "normos-executor",
- "normos-home",
- "normos-nlu",
- "normos-runtime",
- "normos-vision",
- "normosd",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "normos-device"
-version = "0.1.0"
-dependencies = [
- "normos-runtime",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normos-executor"
-version = "0.1.0"
-dependencies = [
- "normos-device",
- "normos-home",
- "normos-nlu",
- "normos-runtime",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normos-home"
-version = "0.1.0"
-dependencies = [
- "normos-audio",
- "normos-device",
- "normos-nlu",
- "normos-runtime",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normos-inference"
-version = "0.1.0"
-dependencies = [
- "normos-runtime",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normos-nlu"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normos-runtime"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normos-vision"
-version = "0.1.0"
-dependencies = [
- "normos-device",
- "normos-runtime",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "normosd"
-version = "0.1.0"
-dependencies = [
- "normos-audio",
- "normos-device",
- "normos-executor",
- "normos-home",
- "normos-inference",
- "normos-nlu",
- "normos-runtime",
- "normos-vision",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
- "tracing-subscriber",
-]
 
 [[package]]
 name = "once_cell"
