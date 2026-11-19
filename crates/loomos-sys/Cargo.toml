@@ -1,0 +1,13 @@
+[package]
+name = "loomos-sys"
+version.workspace = true
+edition.workspace = true
+description = "loomos 唯一可信边界 crate：OS 映射的 unsafe 封装（DEADLINE/RLIMIT/affinity），读回验证后如实上报"
+
+[features]
+default = []
+# Linux 映射实现；非 Linux 目标编译为 Unsupported 桩
+linux-backend = ["libc"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = { version = "0.2", optional = true }

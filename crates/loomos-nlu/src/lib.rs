@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos NLU。
 //!
 //! 双通道继承旧系统 klar_executor 的分流纪律：

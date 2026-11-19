@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomosd 服务器入口：装配原型 + 启动控制台。
 //!
 //! 用法：

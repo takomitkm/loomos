@@ -39,7 +39,7 @@ HA4FPAI 各分支用途的 Rust 重做原型：**一键可执行**（agent 或�
 bash agent/run-prototype.sh
 ```
 
-它做五件事：环境自检 → `cargo test --workspace`（135 项测试）→ 生成 12 条中文语音夹具
+它做五件事：环境自检 → `cargo test --workspace`（143 项测试）→ 生成 12 条中文语音夹具
 → 装配整台 loomos 并回放全场景（唤醒门控/人脸识别（自研视频路流水线）/四道闸开门/灯控/录制/状态/播报落盘）
 → 写出证据报告 `reports/prototype-report.md`。
 
@@ -54,6 +54,7 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 
 | 路径 | 内容 |
 |---|---|
+| `crates/loomos-sys` | **全仓唯一可信边界 crate**（其余全部 `#![forbid(unsafe_code)]`）：OS 映射 unsafe 封装——CpuBudget→SCHED_DEADLINE、MemoryLimit→RLIMIT_AS、核亲和→sched_setaffinity，**施加后读回验证**才报 enforced |
 | `crates/loomos-runtime` | ID / 资源租约（可观测确认点）/ Capability（主体聚合+generation 撤销）/ 配置服务（Schema·Revision·Outbox·Desired-Applied）/ 组件生命周期 / Supervisor（四类故障×三级恢复）/ 事件日志 |
 | `crates/loomos-inference` | 推理编排契约：排队/准入/取消语义、Buffer 所有权 **typestate**（未确认完成不得释放）、单 Owner、隔离区 |
 | `crates/loomos-device` | 设备核心（描述符/提供者/Operation 状态机/租约/遥测/故障）+ mock 家居提供者 + 板端 HTTP 适配器（8091/8092/8093 契约） |
@@ -66,6 +67,7 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 | `crates/loomos-cli` | `gen-fixtures` / **`smoke`（一键验收）** / `replay` / `say` / `serve` |
 | `docs/dev/engineering/` | 工程纲要包（01-总体设计纲要 / 02-Agent执行规范 / 安全契约模板） |
 | `agent/` | Agent 执行规范（[AGENTS.md](AGENTS.md)）、任务提示词、一键脚本、证据产出 |
+| `deploy/` | 板上部署工件：systemd 非 root 单元 / 看门狗 DT 片段 / install 脚本（未上板验证，上板后回填 EVIDENCE） |
 | `manifests/` | 组件 Manifest（TOML）：voice-pipeline / vision |
 | `fixtures/` · `reports/` | 语音夹具 / 验收报告（由脚本生成，不得手改） |
 
@@ -73,7 +75,7 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 
 | 层 | 内容 | 入口 |
 |---|---|---|
-| Host CI | fmt / clippy -D warnings / 135 项测试 / smoke 12/12 | `bash agent/run-prototype.sh` |
+| Host CI | fmt / clippy -D warnings / 143 项测试 / smoke 12/12 | `bash agent/run-prototype.sh` |
 | Cross CI | aarch64 `cargo check`（无需 linker） | `.github/workflows/ci.yml` |
 | Hardware CI | 板上 smoke / RSS / 延迟（风险等级 L0–L3） | 上板时另行记录，**不以宿主数值替代** |
 

@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/loomos-runtime",
+    "crates/loomos-sys",
     "crates/loomos-inference",
     "crates/loomos-device",
     "crates/loomos-audio",
@@ -29,6 +30,7 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["f
 toml = "0.8"
 
 loomos-runtime = { path = "crates/loomos-runtime" }
+loomos-sys = { path = "crates/loomos-sys" }
 loomos-inference = { path = "crates/loomos-inference" }
 loomos-device = { path = "crates/loomos-device" }
 loomos-audio = { path = "crates/loomos-audio" }

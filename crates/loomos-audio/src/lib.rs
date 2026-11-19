@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos 音频数据面。
 //!
 //! 档位纪律（沿旧系统 lang/config 的 chain 设计）：

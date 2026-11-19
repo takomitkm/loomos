@@ -47,6 +47,7 @@ docs/
 # loomos 原型新增结构（2026-11-19 并入）
 
 crates/
+├── loomos-sys/          # 全仓唯一可信边界 crate：OS 映射 unsafe 封装（DEADLINE/RLIMIT/affinity），读回验证
 ├── loomos-runtime/      # ids / resource(租约) / capability / config(配置服务) / component(生命周期) / supervisor(故障恢复) / event
 ├── loomos-inference/    # 推理编排：排队/准入/取消契约、Buffer 所有权 typestate、单 Owner、隔离区
 ├── loomos-device/       # 设备核心 + mock 提供者 + 板端 HTTP 适配(8091/8092/8093)
@@ -58,6 +59,7 @@ crates/
 ├── loomosd/             # 装配(System, VisionMode 可拆卸) + 语音管线 + 控制台 HTTP（10900）
 └── loomos-cli/          # gen-fixtures / smoke(一键验收) / replay / say / serve
 
+deploy/                   # 板上部署工件（systemd 非 root 单元/DT 看门狗/install 脚本）——未上板验证
 agent/
 ├── run-prototype.sh     # 一键执行：自检→cargo test→夹具→smoke→报告（退出码即验收）
 └── tasks/               # 可直接交给 agent 的任务定义（原型复验 / unsafe 重构 / 接真实引擎）

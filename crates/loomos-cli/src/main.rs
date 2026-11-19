@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos CLI：原型的一键执行面。
 //!
 //! 子命令：

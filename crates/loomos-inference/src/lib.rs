@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos 推理编排（architecture/05）。
 //!
 //! 边界三条：

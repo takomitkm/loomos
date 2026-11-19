@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos 执行器：文本 → 意图 → 动作 → 回执文本。
 //!
 //! 双通道分流纪律（旧 klar_executor.handle_text）：

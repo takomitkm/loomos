@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos 视频路（重做自 WCIS-Team/fmql30tai-sdi-npu-face-recognition 的用途契约）。
 //!
 //! 流水线（与旧板同构，引擎全部 trait 化、默认档全 mock 全自检）：

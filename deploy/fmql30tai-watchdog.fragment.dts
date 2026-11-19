@@ -1,0 +1,20 @@
+// FMQL30TAI 看门狗 DT 片段（B5，03-OS代劳清单.md §B5）
+//
+// ⚠️ 状态：**未验证片段**——compatible/寄存器基址必须按厂商 DT 树与
+// 《ZG330平台能力边界》核对后合并；07 §7.7 记录"驱动在但 DT 无节点"，
+// 本片段的作用就是把节点布上（不重编内核）。
+//
+// 合并方式：反编译现有 dtb → 追加节点 → 重新编译 → 更新 BOOT/设备树分区，
+// 并按 architecture/09 §I 记录改动与回退方案。
+
+/dts-v1/;
+/ {
+    // 节点名与寄存器基址必须按厂商 TRM/DT 核对——此处为占位示例
+    watchdog0: watchdog@xxxx0000 {
+        compatible = "cdns,wdt-r1p1";       // 按 07 §7.4/厂商手册核对
+        reg = <0x0 0xXXXX0000 0x0 0x1000>;
+        clocks = <&clk_wdt>;
+        clock-names = "pclk", "ref";
+        timeout-sec = <30>;
+    };
+};

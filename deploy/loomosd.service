@@ -1,0 +1,43 @@
+# loomosd 板上 systemd 单元（B4 非 root 化 + B5 看门狗，03-OS代劳清单 §B4/B5）
+#
+# ⚠️ 状态：**未上板验证**。安装步骤与验收命令见 deploy/README.md。
+#
+# 纪律对照：
+# - 非 root（B4）：User=/Groups= + 设备节点组权限；capability 检查仍有真实边界
+# - 看门狗（B5）：WatchdogSec 依赖 DT watchdog 节点（deploy/fmql30tai-watchdog.fragment.dts），
+#   节点未布线前 systemd 会静默忽略该行——**不要把"配置写了"当"功能在"**
+#   （architecture/11 §11.3.2 假闸门教训）
+# - MemoryMax 在本板是**假闸门**（cgroup MEMCG 未编译，07 §7.1）——
+#   因此**故意不写**，内存约束走 loomos MemoryLimit 准入，不伪造
+
+[Unit]
+Description=loomosd — loomos 装配/控制台/语音管线
+After=network.target
+# 数据盘挂载单元就绪后再启动（旧板 wcis-face-storage 纪律）
+# After=loomos-storage.mount
+
+[Service]
+Type=simple
+User=loomos
+Group=loomos
+SupplementaryGroups=loomos-dev
+ExecStart=/opt/loomos/bin/loomosd --data-dir /var/lib/loomos --speech-dir /var/lib/loomos/speech --port 10900
+Environment=RUST_LOG=info
+
+# B5 看门狗（DT 节点布线后启用；未布线时此行无效）
+# WatchdogSec=30
+
+# 进程身份硬化（5.4 可用部分）
+NoNewPrivileges=true
+# 以下需要 namespace/seccomp（本板未启用，启用后取消注释）：
+# ProtectSystem=strict
+# ProtectHome=true
+# PrivateTmp=true
+
+Restart=on-failure
+RestartSec=2
+# DMA/NPU Owner 类服务禁止 SIGKILL（旧板纪律：靠 stdin EOF 排水）
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos 系统运行时。
 //!
 //! 对应 `docs/dev/architecture/03-os-runtime.md` 的模块划分：
@@ -14,6 +16,7 @@ pub mod component;
 pub mod config;
 pub mod event;
 pub mod ids;
+pub mod platform;
 pub mod resource;
 pub mod supervisor;
 
@@ -24,6 +27,7 @@ pub use config::{
 };
 pub use event::{Event, EventKind, EventLog};
 pub use ids::{ComponentId, ExecutionId, LeaseId, OperationId, ResourceId};
+pub use platform::{EnforcementLevelReport, MappingReport};
 pub use resource::{
     CoreSet, CpuBudget, EnforcementLevel, ExecutionContext, ExecutionContract, Lease, LeaseManager,
     LeaseMode, LeaseState, ResourceError, ResourceKind,

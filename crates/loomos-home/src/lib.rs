@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos 家居域。
 //!
 //! Home Domain 定义领域操作与策略（architecture/06 §6.5：Device Core 不做万能 API）：

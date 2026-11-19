@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! loomos 设备核心（architecture/06）。
 //!
 //! Device Core 只统一身份、权限、生命周期、资源所有权、操作跟踪、遥测、故障报告；
