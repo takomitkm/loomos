@@ -1,0 +1,228 @@
+name: nlu-bench
+
+# loomos-nlu 三形态（native / WAMR interp / WAMR aot）× 三目标（x86_64-linux、
+# aarch64-linux、x86_64-windows）的产物流水线：
+#   - 业务 wasm 模块（loomos-nlu-wasm-wrap → wasm32-wasip1）
+#   - wamrc（linux + windows 各自构建，AOT 编译器与目标 OS 同宿主）
+#   - 三份 .aot（x86_64-linux / aarch64-linux 在 linux wamrc 产出；x86_64-windows 在 windows wamrc 产出）
+#   - bench 可执行文件 ×3（x86_64-linux / aarch64-linux / x86_64-windows）
+# 运行与测量在本地完成（本机 + QEMU），本 workflow 只负责编译。
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [bench/nlu-wamr-matrix]
+
+concurrency:
+  group: nlu-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wasm:
+    name: 业务 wasm 模块（wasm32-wasip1）
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+      - name: build
+        run: |
+          RUSTFLAGS="-C panic=abort" cargo build --release --target wasm32-wasip1 -p loomos-nlu-wasm-wrap
+          cp target/wasm32-wasip1/release/*.wasm nlu-wrap.wasm
+          ls -l nlu-wrap.wasm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nlu-wasm
+          path: nlu-wrap.wasm
+
+  wamrc-linux:
+    name: wamrc（ubuntu 交叉产 x86_64/aarch64 linux .aot）
+    runs-on: ubuntu-22.04
+    timeout-minutes: 200
+    steps:
+      - name: clone WAMR
+        run: git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
+      - name: build LLVM 18.1.8（X86+AArch64，tools/tests 全关）
+        run: |
+          python3 -m pip install --quiet requests
+          cd wasm-micro-runtime/build-scripts
+          python3 build_llvm.py --platform linux --arch X86 AArch64
+      - name: build wamrc
+        run: |
+          cd wasm-micro-runtime/wamr-compiler
+          cmake -S . -B build -G Ninja
+          ninja -C build wamrc
+          ./build/wamrc --version || true
+          cp build/wamrc "$GITHUB_WORKSPACE/wamrc"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wamrc-linux
+          path: wamrc
+
+  wamrc-windows:
+    name: wamrc.exe（windows 产 x86_64-windows .aot）
+    runs-on: windows-2022
+    timeout-minutes: 300
+    steps:
+      - name: clone WAMR
+        run: git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
+      - name: clone LLVM 18.1.8
+        run: git clone --depth 1 --branch llvmorg-18.1.8 https://github.com/llvm/llvm-project.git wasm-micro-runtime/core/deps/llvm
+      - name: load MSVC env
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: cmake LLVM（MSVC + Ninja，跳过 CPack/NSIS 打包路径）
+        shell: bash
+        run: |
+          cmake -S wasm-micro-runtime/core/deps/llvm -B wasm-micro-runtime/core/deps/llvm/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLVM_TARGETS_TO_BUILD="X86" \
+            -DLLVM_ENABLE_PROJECTS="" \
+            -DLLVM_INCLUDE_TOOLS=OFF -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_INCLUDE_DOCS=OFF \
+            -DLLVM_INCLUDE_UTILS=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_ENABLE_TERMINFO=OFF \
+            -DLLVM_ENABLE_LIBEDIT=OFF -DLLVM_ENABLE_ZLIB=OFF -DLLVM_ENABLE_ZSTD=OFF \
+            -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_APPEND_VC_REV=OFF -DLLVM_ENABLE_IDE=OFF
+      - name: ninja LLVM
+        shell: bash
+        run: cmake --build wasm-micro-runtime/core/deps/llvm/build
+      - name: build wamrc.exe
+        shell: bash
+        run: |
+          cmake -S wasm-micro-runtime/wamr-compiler -B wamrc-build -G Ninja
+          ninja -C wamrc-build wamrc
+          cp wamrc-build/wamrc.exe "$GITHUB_WORKSPACE/wamrc.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wamrc-windows
+          path: wamrc.exe
+
+  aot-linux:
+    name: .aot（x86_64-linux + aarch64-linux）
+    needs: [wasm, wamrc-linux]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "{nlu-wasm,wamrc-linux}"
+          merge-multiple: true
+          path: .
+      - name: wamrc 产出
+        run: |
+          chmod +x wamrc
+          ./wamrc --target=x86_64 --cpu=x86-64 -o nlu-x86_64-linux.aot nlu-wrap.wasm
+          ./wamrc --target=aarch64 -o nlu-aarch64-linux.aot nlu-wrap.wasm
+          ls -l *.aot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aot-linux
+          path: "*.aot"
+
+  aot-windows:
+    name: .aot（x86_64-windows）
+    needs: [wasm, wamrc-windows]
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "{nlu-wasm,wamrc-windows}"
+          merge-multiple: true
+          path: .
+      - name: wamrc 产出
+        shell: bash
+        run: |
+          ./wamrc.exe --target=x86_64 --cpu=x86-64 -o nlu-x86_64-windows.aot nlu-wrap.wasm
+          ls -l *.aot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aot-windows
+          path: "*.aot"
+
+  bench-x64-linux:
+    name: bench x86_64-linux（vmlib interp+aot+wasi）
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: clone WAMR + 构建 libvmlib.a
+        run: |
+          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
+          cmake -S wasm-micro-runtime -B vmlib-build -G Ninja \
+            -DWAMR_BUILD_PLATFORM=linux -DWAMR_BUILD_TARGET=X86_64 \
+            -DWAMR_BUILD_INTERP=1 -DWAMR_BUILD_AOT=1 \
+            -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
+            -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_SIMD=1 \
+            -DWAMR_BUILD_MULTI_MODULE=0 -DBUILD_SHARED_LIBS=OFF
+          ninja -C vmlib-build vmlib
+          ls -l vmlib-build/libvmlib.a
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build bench
+        run: IWASM_LIB_DIR="$GITHUB_WORKSPACE/vmlib-build" cargo build --release -p loomos-nlu-bench --features wamr
+      - name: native 冒烟
+        run: target/release/loomos-nlu-bench native 100 0.5 | tail -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-x64-linux
+          path: target/release/loomos-nlu-bench
+
+  bench-arm64-linux:
+    name: bench aarch64-linux（arm runner 原生）
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: clone WAMR + 构建 libvmlib.a
+        run: |
+          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
+          cmake -S wasm-micro-runtime -B vmlib-build -G Ninja \
+            -DWAMR_BUILD_PLATFORM=linux -DWAMR_BUILD_TARGET=AARCH64 \
+            -DWAMR_BUILD_INTERP=1 -DWAMR_BUILD_AOT=1 \
+            -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
+            -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_SIMD=1 \
+            -DWAMR_BUILD_MULTI_MODULE=0 -DBUILD_SHARED_LIBS=OFF
+          ninja -C vmlib-build vmlib
+          ls -l vmlib-build/libvmlib.a
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build bench
+        run: IWASM_LIB_DIR="$GITHUB_WORKSPACE/vmlib-build" cargo build --release -p loomos-nlu-bench --features wamr
+      - name: native 冒烟
+        run: target/release/loomos-nlu-bench native 100 0.5 | tail -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-arm64-linux
+          path: target/release/loomos-nlu-bench
+
+  bench-x64-windows:
+    name: bench x86_64-windows（MSVC + vmlib windows）
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: clone WAMR + 构建 libvmlib.a（__try SEH 需 MSVC，本机无 MSVC/clang 故在 CI 构建）
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
+          cmake -S wasm-micro-runtime -B vmlib-build \
+            -DWAMR_BUILD_PLATFORM=windows -DWAMR_BUILD_TARGET=X86_64 \
+            -DWAMR_BUILD_INTERP=1 -DWAMR_BUILD_AOT=1 \
+            -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
+            -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_SIMD=1 \
+            -DWAMR_BUILD_MULTI_MODULE=0 -DBUILD_SHARED_LIBS=OFF
+          cmake --build vmlib-build --config Release --target vmlib
+          ls -l vmlib-build/Release/libvmlib.a || ls -l vmlib-build/libvmlib.a
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build bench
+        shell: bash
+        run: IWASM_LIB_DIR="$GITHUB_WORKSPACE/vmlib-build/Release" cargo build --release -p loomos-nlu-bench --features wamr
+      - name: native 冒烟
+        shell: bash
+        run: ./target/release/loomos-nlu-bench.exe native 100 0.5 | tail -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-x64-windows
+          path: target/release/loomos-nlu-bench.exe
