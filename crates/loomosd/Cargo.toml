@@ -21,6 +21,7 @@ loomos-nlu = { workspace = true }
 loomos-home = { workspace = true }
 loomos-executor = { workspace = true }
 loomos-vision = { workspace = true }
+loomos-adapters-sherpa = { workspace = true }
 loomos-inference = { workspace = true }
 
 [dev-dependencies]

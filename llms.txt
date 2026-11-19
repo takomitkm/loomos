@@ -52,6 +52,7 @@ crates/
 ├── loomos-inference/    # 推理编排：排队/准入/取消契约、Buffer 所有权 typestate、单 Owner、隔离区
 ├── loomos-device/       # 设备核心 + mock 提供者 + 板端 HTTP 适配(8091/8092/8093)
 ├── loomos-audio/        # 数据面：WAV、重采样(linear/decimate3-mavg3)、能量门/VAD、KWS/ASR/TTS 档位（默认档全自检）
+├── loomos-adapters-sherpa/ # sherpa-onnx 真引擎适配器：Python API 子进程驱动（平台无关），ASR/TTS 档位
 ├── loomos-nlu/          # 实体注册表、中文规则语法、直连整句表、klar v2 外部引擎适配契约
 ├── loomos-vision/       # 视频路（自研可拆卸）：帧源→检测→嵌入→匹配→PAD→录制/直播
 ├── loomos-home/         # 意图→设备操作、四道闸开门、声纹 mock、危险动作一次性确认

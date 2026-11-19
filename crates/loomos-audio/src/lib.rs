@@ -17,10 +17,10 @@ pub mod tts;
 pub mod vad;
 pub mod wav;
 
-pub use asr::{AsrBackend, AsrError, EchoAsr, SidecarAsr};
+pub use asr::{AsrBackend, AsrError, AsrResult, EchoAsr, SidecarAsr};
 pub use capture::{AudioChunk, AudioSource, ToneSource, WavFileSource};
 pub use kws::{KwsBackend, PassthroughKws, TextGateKws};
-pub use tts::{SineTts, TtsBackend, TtsOutput};
+pub use tts::{SineTts, TtsBackend, TtsError, TtsOutput};
 pub use vad::{EnergyVad, Segment, SpeechSegmenter, VadBackend};
 pub use wav::{WavError, read_wav_mono_pcm16, write_wav_mono_pcm16};
 

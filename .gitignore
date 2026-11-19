@@ -6,3 +6,11 @@ fixtures/
 !fixtures/.gitkeep
 var/
 *.tmp
+
+# sherpa 模型/临时下载物（体积超限，不入库；下载见 scripts/dl_sherpa_models.py）
+tts-melo.tar.bz2
+silero_vad.onnx
+asr.tar.bz2
+asr-small-zh-en.tar.bz2
+asr/
+tts/

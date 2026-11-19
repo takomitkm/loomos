@@ -39,7 +39,7 @@ HA4FPAI 各分支用途的 Rust 重做原型：**一键可执行**（agent 或�
 bash agent/run-prototype.sh
 ```
 
-它做五件事：环境自检 → `cargo test --workspace`（149 项测试）→ 生成 12 条中文语音夹具
+它做五件事：环境自检 → `cargo test --workspace`（154 项测试）→ 生成 12 条中文语音夹具
 → 装配整台 loomos 并回放全场景（唤醒门控/人脸识别（自研视频路流水线）/四道闸开门/灯控/录制/状态/播报落盘）
 → 写出证据报告 `reports/prototype-report.md`。
 
@@ -59,6 +59,7 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 | `crates/loomos-inference` | 推理编排契约：排队/准入/取消语义、Buffer 所有权 **typestate**（未确认完成不得释放）、单 Owner、隔离区 |
 | `crates/loomos-device` | 设备核心（描述符/提供者/Operation 状态机/租约/遥测/故障）+ mock 家居提供者 + 板端 HTTP 适配器（8091/8092/8093 契约） |
 | `crates/loomos-audio` | WAV、重采样（linear 升采样 / decimate3-mavg3 降采样——沿旧板实测选型）、能量门/VAD、KWS/ASR/TTS 档位（默认档 echo/sine 全自检） |
+| `crates/loomos-adapters-sherpa` | **sherpa-onnx 真引擎适配器**：Python API 子进程驱动（Windows/aarch64 同一套命令），实现 ASR/TTS trait；模型缺失时优雅 skip |
 | `crates/loomos-nlu` | 实体/区域注册表、中文规则语法、直连整句表（不做子串）、klar v2 外部引擎适配契约 |
 | `crates/loomos-vision` | **视频路（自研可拆卸，契约对齐 fmql30tai-sdi-npu-face-recognition）**：帧源→检测→嵌入→匹配→PAD 六态→录制→直播；引擎全 trait 化，装配模式 Detached/MockDevices/Pipeline/HttpBoard |
 | `crates/loomos-home` | 意图→设备操作映射、**四道闸开门**（口令→人脸→PAD→声纹）、声纹 mock、危险动作一次性确认（TTL/绑定/用过即废） |
@@ -75,7 +76,7 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 
 | 层 | 内容 | 入口 |
 |---|---|---|
-| Host CI | fmt / clippy -D warnings / 149 项测试 / smoke 12/12 | `bash agent/run-prototype.sh` |
+| Host CI | fmt / clippy -D warnings / 154 项测试 / smoke 12/12 | `bash agent/run-prototype.sh` |
 | Cross CI | aarch64 `cargo check`（无需 linker） | `.github/workflows/ci.yml` |
 | Hardware CI | 板上 smoke / RSS / 延迟（风险等级 L0–L3） | 上板时另行记录，**不以宿主数值替代** |
 
