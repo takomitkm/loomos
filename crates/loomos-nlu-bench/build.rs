@@ -10,10 +10,10 @@ fn main() {
     match std::env::var("IWASM_LIB_DIR") {
         Ok(dir) => {
             println!("cargo:rustc-link-search=native={dir}");
-            println!("cargo:rustc-link-lib=static=vmlib");
+            println!("cargo:rustc-link-lib=static=iwasm");
         }
         Err(_) if want_wamr => {
-            panic!("wamr feature 需要 IWASM_LIB_DIR 指向 libvmlib.a 所在目录")
+            panic!("wamr feature 需要 IWASM_LIB_DIR 指向 libiwasm.a 所在目录")
         }
         Err(_) => {
             println!(
