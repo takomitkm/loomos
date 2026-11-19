@@ -12,6 +12,8 @@ members = [
     "crates/loomos-vision",
     "crates/loomosd",
     "crates/loomos-cli",
+    "crates/loomos-nlu-wasm-wrap",
+    "crates/loomos-nlu-bench",
 ]
 
 [workspace.package]

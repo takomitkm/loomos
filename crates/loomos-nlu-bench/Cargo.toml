@@ -1,0 +1,13 @@
+[package]
+name = "loomos-nlu-bench"
+version.workspace = true
+edition.workspace = true
+description = "loomos NLU 基准 harness：native / WAMR interp / WAMR aot 三模式，分段计时 + RSS + CPU + P50/P95 + 吞吐"
+
+[dependencies]
+loomos-nlu = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+# WAMR（interp/aot 模式）需要 IWASM_LIB_DIR 指向 libvmlib.a；native 模式默认档即可
+wamr = []

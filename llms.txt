@@ -58,6 +58,7 @@ crates/
 ├── loomos-executor/     # 双通道执行器 + 固定应答 + TTS 文本映射
 ├── loomosd/             # 装配(System, VisionMode 可拆卸) + 语音管线 + 控制台 HTTP（10900）
 └── loomos-cli/          # gen-fixtures / smoke(一键验收) / replay / say / serve
+└── loomos-nlu-bench/    # （workspace 内）NLU 三模式基准 native/WAMR interp/WAMR aot——wamr feature 门控，默认构建仅 native
 
 deploy/                   # 板上部署工件（systemd 非 root 单元/DT 看门狗/install 脚本）——未上板验证
 agent/
@@ -72,6 +73,7 @@ docs/dev 新增（上文编号规则同样适用）：
 - EVIDENCE.md                  # 实测数据台账（旧板读数 + 本仓库验证记录）
 - engineering/03-OS代劳清单.md # 内核 5.4 缺口撑起的用户态工作盘点：哪些该让 OS 代劳（A 保留/B 立刻代劳/C 永久保留/D 换内核解锁）
 - engineering/04-OS功能依赖与自实现删减.md # loomos 用了 OS 的哪些功能（≤15 syscall 族）+ 参考 OS 语义删减成自实现的最小形态
+- engineering/dependency-ledger.md # 依赖台账（08 §8.3 字段；gen-dependency-ledger.py 生成；Hardware 列未验证）
 
 新增规则：
 - engineering = 工程纪律（Agent 行为规范 / unsafe / 契约模板），与机型无关

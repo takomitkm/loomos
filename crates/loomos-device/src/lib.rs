@@ -9,10 +9,12 @@
 //! Succeeded / Failed / Cancelled / Expired / **Unknown**。
 //! 取消语义由 Backend 明确：排队时可取消 ≠ 执行中可取消；Unknown 不得报成 Failed。
 
+pub mod adapter;
 pub mod core;
 pub mod http;
 pub mod mock;
 
+pub use adapter::DomainAdapter;
 pub use core::{
     DeviceCapability, DeviceDescriptor, DeviceError, DeviceHealth, DeviceLifecycle, DeviceRegistry,
     HealthState, OperationRecord, OperationState, ProviderId,

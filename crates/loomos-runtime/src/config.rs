@@ -206,6 +206,78 @@ pub struct Schema {
     pub fields: Vec<SchemaField>,
 }
 
+/// Secret 句柄（04 §4.10）：包住敏感字符串，Drop 时清零内存。
+///
+/// 纪律：secrecy/zeroize 类 crate 只提供类型辅助，**不等于安全存储**；
+/// 这里是纯 Rust 的最小实现——Display/Debug 永远脱敏，Drop 覆写。
+#[derive(Clone)]
+pub struct SecretHandle {
+    inner: Vec<u8>,
+}
+
+impl SecretHandle {
+    pub fn new(value: &str) -> Self {
+        Self {
+            inner: value.as_bytes().to_vec(),
+        }
+    }
+
+    /// 显式取出明文（仅授权代码路径调用；打印/日志永远走 Display）。
+    pub fn expose(&self) -> String {
+        String::from_utf8_lossy(&self.inner).to_string()
+    }
+
+    /// 覆写清零（Drop 自动调用；需要提前清除时手动调用）。
+    pub fn wipe(&mut self) {
+        for b in self.inner.iter_mut() {
+            *b = 0;
+        }
+        self.inner.clear();
+    }
+}
+
+impl Drop for SecretHandle {
+    fn drop(&mut self) {
+        self.wipe();
+    }
+}
+
+impl std::fmt::Display for SecretHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // 永不泄明文：只暴露长度
+        write!(f, "<secret:len={}>", self.inner.len())
+    }
+}
+
+impl std::fmt::Debug for SecretHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
+/// Schema 迁移注册项（04 §4.6：schema_version + 迁移入口）。
+///
+/// 语义：namespace 当前 schema_version == from_version 时，可调用
+/// `migrate_namespace` 升级到 to_version；迁移函数收到旧数据（key → value），
+/// 返回新写入/删除集合与**新 Schema**；单事务原子提交。
+/// 迁移函数类型：旧数据 → 产出 writes/deletes/new_schema。
+pub type MigrationFn =
+    std::sync::Arc<dyn Fn(&BTreeMap<String, ConfigValue>) -> MigrationOutput + Send + Sync>;
+
+pub struct SchemaMigrationSpec {
+    pub namespace: String,
+    pub from_version: u32,
+    pub to_version: u32,
+    pub migrate: MigrationFn,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct MigrationOutput {
+    pub writes: Vec<(String, ConfigValue)>,
+    pub deletes: Vec<String>,
+    pub new_schema: Schema,
+}
+
 /// Provider 只负责数据存取（04 §4.7）。
 pub trait ConfigProvider: Send + Sync {
     fn get(&self, namespace: &str, key: &str) -> Result<Option<VersionedConfigValue>, ConfigError>;
@@ -500,6 +572,8 @@ pub struct ConfigService {
     apply_status: Mutex<BTreeMap<String, ApplyStatus>>,
     /// Secret key 黑名单：这些 key 的值永不进入日志/事件。
     secret_keys: Vec<String>,
+    /// Schema 迁移注册表：(namespace, from_version) → 迁移规格。
+    migrations: Mutex<BTreeMap<(String, u32), std::sync::Arc<SchemaMigrationSpec>>>,
 }
 
 impl ConfigService {
@@ -515,6 +589,7 @@ impl ConfigService {
             outbox_seq: AtomicU64::new(1),
             apply_status: Mutex::new(BTreeMap::new()),
             secret_keys: vec!["token".into(), "secret".into(), "password".into()],
+            migrations: Mutex::new(BTreeMap::new()),
         }
     }
 
@@ -630,6 +705,114 @@ impl ConfigService {
     /// 取出并清空 outbox（持久化由 EventLog 承接）。
     pub fn drain_outbox(&self) -> Vec<ConfigChanged> {
         std::mem::take(&mut *self.outbox.lock().unwrap())
+    }
+
+    /// 注册 Schema 迁移规格（from_version → to_version）。
+    pub fn register_migration(&self, spec: SchemaMigrationSpec) {
+        self.migrations.lock().unwrap().insert(
+            (spec.namespace.clone(), spec.from_version),
+            std::sync::Arc::new(spec),
+        );
+    }
+
+    /// 执行 namespace 的 Schema 迁移（04 §4.6 迁移入口）：
+    /// 读当前数据 → 迁移函数产出 writes/deletes/new_schema → 单事务原子提交。
+    /// 校验：token 需有该 namespace 的 ConfigWrite；当前 schema_version 必须 == from_version。
+    pub fn migrate_namespace(&self, token: &Token, namespace: &str) -> Result<u64, ConfigError> {
+        self.capabilities.check(
+            token,
+            &Rights::ConfigWrite {
+                namespace: namespace.to_string(),
+            },
+        )?;
+        // 当前 schema 与版本
+        let current = self
+            .schema_of(namespace)
+            .ok_or_else(|| ConfigError::NamespaceNotFound(namespace.to_string()))?;
+        let spec = {
+            let reg = self.migrations.lock().unwrap();
+            reg.get(&(namespace.to_string(), current.schema_version))
+                .cloned()
+                .ok_or_else(|| {
+                    ConfigError::ValidationFailed(format!(
+                        "{namespace} 无 schema_version {} 的迁移注册",
+                        current.schema_version
+                    ))
+                })?
+        };
+        // 读当前数据（Provider list + get）
+        let mut old = BTreeMap::new();
+        for key in self.provider.list(namespace)? {
+            if let Some(v) = self.provider.get(namespace, &key)? {
+                old.insert(key, v.value);
+            }
+        }
+        let out = (spec.migrate)(&old);
+        // 校验迁移产出的新 Schema 合法（复用 register_schema 校验）
+        let mut new_schema = out.new_schema;
+        new_schema.namespace = namespace.to_string();
+        if new_schema.schema_version != spec.to_version {
+            return Err(ConfigError::ValidationFailed(format!(
+                "迁移产出 schema_version {} 与 to_version {} 不符",
+                new_schema.schema_version, spec.to_version
+            )));
+        }
+        self.register_schema(new_schema)?;
+        // 单事务提交
+        let tx = ConfigTransaction {
+            namespace: NamespacePath::new(namespace)?,
+            expected_revision: self.provider_revision(namespace)?,
+            writes: out.writes,
+            deletes: out.deletes,
+        };
+        let new_rev = self.provider.commit(&tx)?;
+        self.outbox.lock().unwrap().push(ConfigChanged {
+            seq: self.outbox_seq.fetch_add(1, Ordering::Relaxed),
+            namespace: namespace.to_string(),
+            revision: new_rev,
+            keys: vec![format!(
+                "<schema migration v{}→v{}>",
+                spec.from_version, spec.to_version
+            )],
+        });
+        tracing::info!(ns=%namespace, from=spec.from_version, to=spec.to_version, rev=%new_rev, "schema migrated");
+        Ok(new_rev)
+    }
+
+    /// 读 namespace 当前 revision（provider 各实现把版本挂在 revisions 表）。
+    fn provider_revision(&self, namespace: &str) -> Result<u64, ConfigError> {
+        // provider.list 后任一 key 的 VersionedConfigValue.revision 即当前 revision
+        for key in self.provider.list(namespace)? {
+            if let Some(v) = self.provider.get(namespace, &key)? {
+                return Ok(v.revision);
+            }
+        }
+        Ok(0)
+    }
+
+    /// 读取 Secret 值（04 §4.10）：仅 secret key 可走此入口，返回 Drop 清零的句柄。
+    /// 非 secret key 拒绝（防止误把普通配置当敏感值处理，或反之绕过脱敏）。
+    pub fn get_secret(
+        &self,
+        token: &Token,
+        namespace: &NamespacePath,
+        key: &str,
+    ) -> Result<SecretHandle, ConfigError> {
+        if !self.is_secret_key(key) {
+            return Err(ConfigError::ValidationFailed(format!(
+                "{key} 不是 secret key，请走 get()（secret 键黑名单: {:?}）",
+                self.secret_keys
+            )));
+        }
+        let v = self.get(token, namespace, key)?;
+        match &v.value {
+            ConfigValue::String(s) => Ok(SecretHandle::new(s)),
+            other => Err(ConfigError::TypeMismatch {
+                key: key.to_string(),
+                expected: "string".into(),
+                got: other.type_name().to_string(),
+            }),
+        }
     }
 
     /// 登记 Desired；由 Applier 在目标服务应用成功后写 Applied；服务回报 Observed。
@@ -896,6 +1079,157 @@ mod tests {
         let st = svc.apply_status("services/voice").unwrap();
         assert_eq!(st.applied_revision, Some(7));
         assert!(st.last_error.is_none());
+    }
+
+    #[test]
+    fn secret_handle_redacts_and_wipes() {
+        let mut h = SecretHandle::new("super-token");
+        // Display/Debug 永不泄明文
+        assert!(!format!("{h}").contains("super-token"));
+        assert!(!format!("{h:?}").contains("super-token"));
+        assert_eq!(format!("{h}"), "<secret:len=11>");
+        // expose 只给授权路径
+        assert_eq!(h.expose(), "super-token");
+        // wipe 覆写清零
+        h.wipe();
+        assert!(h.expose().is_empty());
+    }
+
+    #[test]
+    fn get_secret_rejects_non_secret_keys() {
+        let (svc, writer, reader) = svc_with_caps();
+        let ns = NamespacePath::new("services/voice").unwrap();
+        let tx = ConfigTransaction {
+            namespace: ns.clone(),
+            expected_revision: 0,
+            writes: vec![
+                ("model".into(), ConfigValue::String("zipformer".into())),
+                ("api_token".into(), ConfigValue::String("abc123".into())),
+            ],
+            deletes: vec![],
+        };
+        svc.commit(&writer, tx).unwrap();
+        // secret key 走 get_secret 成功
+        let h = svc.get_secret(&reader, &ns, "api_token").unwrap();
+        assert_eq!(h.expose(), "abc123");
+        // 非 secret key 拒绝（防绕过脱敏）
+        let err = svc.get_secret(&reader, &ns, "model").unwrap_err();
+        assert!(matches!(err, ConfigError::ValidationFailed(_)));
+    }
+
+    #[test]
+    fn schema_migration_flow() {
+        let (svc, writer, reader) = svc_with_caps();
+        // v1：旧字段名
+        svc.register_schema(Schema {
+            namespace: "services/voice/tts".into(),
+            schema_version: 1,
+            fields: vec![SchemaField {
+                key: "volume".into(),
+                value_type: "integer".into(),
+                required: true,
+                default: Some(ConfigValue::Integer(50)),
+                min: Some(0),
+                max: Some(100),
+            }],
+        })
+        .unwrap();
+        let ns = NamespacePath::new("services/voice/tts").unwrap();
+        svc.commit(
+            &writer,
+            ConfigTransaction {
+                namespace: ns.clone(),
+                expected_revision: 0,
+                writes: vec![("volume".into(), ConfigValue::Integer(70))],
+                deletes: vec![],
+            },
+        )
+        .unwrap();
+        // 注册 v1→v2 迁移：volume → gain（映射值域 0-100 → 0-10）
+        svc.register_migration(SchemaMigrationSpec {
+            namespace: "services/voice/tts".into(),
+            from_version: 1,
+            to_version: 2,
+            migrate: std::sync::Arc::new(|old| {
+                let gain = match old.get("volume") {
+                    Some(ConfigValue::Integer(v)) => ConfigValue::Integer(v / 10),
+                    _ => ConfigValue::Integer(5),
+                };
+                MigrationOutput {
+                    writes: vec![("gain".into(), gain)],
+                    deletes: vec!["volume".into()],
+                    new_schema: Schema {
+                        namespace: "services/voice/tts".into(),
+                        schema_version: 2,
+                        fields: vec![SchemaField {
+                            key: "gain".into(),
+                            value_type: "integer".into(),
+                            required: true,
+                            default: Some(ConfigValue::Integer(5)),
+                            min: Some(0),
+                            max: Some(10),
+                        }],
+                    },
+                }
+            }),
+        });
+        let new_rev = svc
+            .migrate_namespace(&writer, "services/voice/tts")
+            .unwrap();
+        // 数据已迁移
+        let gain = svc.get(&reader, &ns, "gain").unwrap();
+        assert_eq!(gain.value, ConfigValue::Integer(7), "70/10=7");
+        let old = svc.get(&reader, &ns, "volume");
+        assert!(
+            matches!(old, Err(ConfigError::KeyNotFound(_))),
+            "旧字段应已删除"
+        );
+        // 新 schema 生效：再提交 gain 合法、volume 拒绝
+        svc.commit(
+            &writer,
+            ConfigTransaction {
+                namespace: ns.clone(),
+                expected_revision: new_rev,
+                writes: vec![("gain".into(), ConfigValue::Integer(8))],
+                deletes: vec![],
+            },
+        )
+        .unwrap();
+        assert!(
+            svc.commit(
+                &writer,
+                ConfigTransaction {
+                    namespace: ns,
+                    expected_revision: new_rev + 1,
+                    writes: vec![("volume".into(), ConfigValue::Integer(1))],
+                    deletes: vec![],
+                },
+            )
+            .is_err(),
+            "旧字段在新 schema 下应拒绝"
+        );
+        // outbox 记录迁移
+        let outbox = svc.drain_outbox();
+        assert!(
+            outbox
+                .iter()
+                .any(|e| e.keys.iter().any(|k| k.contains("schema migration")))
+        );
+    }
+
+    #[test]
+    fn migrate_without_registration_rejected() {
+        let (svc, writer, _r) = svc_with_caps();
+        svc.register_schema(Schema {
+            namespace: "services/voice/tts".into(),
+            schema_version: 1,
+            fields: vec![],
+        })
+        .unwrap();
+        let err = svc
+            .migrate_namespace(&writer, "services/voice/tts")
+            .unwrap_err();
+        assert!(matches!(err, ConfigError::ValidationFailed(_)));
     }
 
     #[test]

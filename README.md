@@ -39,7 +39,7 @@ HA4FPAI 各分支用途的 Rust 重做原型：**一键可执行**（agent 或�
 bash agent/run-prototype.sh
 ```
 
-它做五件事：环境自检 → `cargo test --workspace`（143 项测试）→ 生成 12 条中文语音夹具
+它做五件事：环境自检 → `cargo test --workspace`（149 项测试）→ 生成 12 条中文语音夹具
 → 装配整台 loomos 并回放全场景（唤醒门控/人脸识别（自研视频路流水线）/四道闸开门/灯控/录制/状态/播报落盘）
 → 写出证据报告 `reports/prototype-report.md`。
 
@@ -75,7 +75,7 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 
 | 层 | 内容 | 入口 |
 |---|---|---|
-| Host CI | fmt / clippy -D warnings / 143 项测试 / smoke 12/12 | `bash agent/run-prototype.sh` |
+| Host CI | fmt / clippy -D warnings / 149 项测试 / smoke 12/12 | `bash agent/run-prototype.sh` |
 | Cross CI | aarch64 `cargo check`（无需 linker） | `.github/workflows/ci.yml` |
 | Hardware CI | 板上 smoke / RSS / 延迟（风险等级 L0–L3） | 上板时另行记录，**不以宿主数值替代** |
 

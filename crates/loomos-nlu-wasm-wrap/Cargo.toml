@@ -1,0 +1,12 @@
+[package]
+name = "loomos-nlu-wasm-wrap"
+version.workspace = true
+edition.workspace = true
+description = "loomos NLU 的 C ABI 胶水层：业务代码原样不动，仅暴露 ab_* 导出供 WAMR interp/AOT 调用"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+loomos-nlu = { workspace = true }
+serde_json = { workspace = true }
