@@ -31,7 +31,11 @@ mod host {
         let s = std::fs::read_to_string("/proc/self/status").ok()?;
         for line in s.lines() {
             if let Some(rest) = line.strip_prefix(key) {
-                let num: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+                let num: String = rest
+                    .chars()
+                    .skip_while(|c| !c.is_ascii_digit())
+                    .take_while(|c| c.is_ascii_digit())
+                    .collect();
                 return num.parse().ok();
             }
         }
@@ -286,12 +290,14 @@ fn main() {
     } else {
         None
     };
+    // 参数槽位：native 模式没有模块路径，iters/tp 从下标 2 起；interp/aot 从下标 3 起
+    let base = if mode == "native" { 2 } else { 3 };
     let iters: usize = args
-        .get(3)
+        .get(base)
         .and_then(|s| s.parse().ok())
         .unwrap_or(ITERS_DEFAULT);
     let tp_secs: f64 = args
-        .get(4)
+        .get(base + 1)
         .and_then(|s| s.parse().ok())
         .unwrap_or(TP_SECS_DEFAULT);
 
@@ -324,10 +330,14 @@ fn main() {
 
     // ---- 稳态延迟：iters 次，语料轮转（首调/冷启动影响已被预热隔离） ----
     let mut durations = Vec::with_capacity(iters);
+    // 固定 2000 调用（轮转语料）的等价性校验和：native/interp/aot 必须一致
+    let mut lat_checksum: u64 = 0;
     for i in 0..iters {
         let f = &fixtures[i % fixtures.len()];
         let t = Instant::now();
-        ctx.parse_once(f.as_bytes());
+        lat_checksum = lat_checksum
+            .wrapping_mul(31)
+            .wrapping_add(ctx.parse_once(f.as_bytes()) as u64);
         durations.push(t.elapsed().as_nanos() as u64);
     }
     durations.sort_unstable();
@@ -396,6 +406,7 @@ fn main() {
                     else if cfg!(target_arch = "aarch64") { "aarch64" }
                     else { "other" },
             "iters": iters,
+            "lat_checksum": lat_checksum,
             "tp_secs": tp_secs,
             "fixtures": fixtures.len(),
             "checksum": checksum,
@@ -587,13 +598,13 @@ impl ModeCtx {
                 assert!(unsafe {
                     wasm_runtime_call_wasm(exec_env, alloc_fn, 1, argv_buf.as_mut_ptr())
                 });
-                let in_ptr = argv_buf[1];
+                let in_ptr = argv_buf[0]; // 返回值在 argv[0]（WAMR call_wasm 约定）
                 let in_native = unsafe { wasm_runtime_addr_app_to_native(inst, in_ptr as u64) };
 
                 assert!(unsafe {
                     wasm_runtime_call_wasm(exec_env, outp_fn, 0, argv_buf.as_mut_ptr())
                 });
-                let out_ptr = argv_buf[1];
+                let out_ptr = argv_buf[0];
                 let out_native = unsafe { wasm_runtime_addr_app_to_native(inst, out_ptr as u64) };
                 phases.push(("guest_setup".into(), t.elapsed().as_micros() as u64));
 
@@ -653,7 +664,7 @@ impl ModeCtx {
                     }
                     std::process::exit(3);
                 }
-                let out_len = argv[2] as usize;
+                let out_len = argv[0] as usize; // 返回值在 argv[0]
                 // 读回结果（模拟 executor 消费 JSON 字节的真实数据通路）
                 if out_len <= out_host.buf.len() {
                     unsafe {
