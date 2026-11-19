@@ -75,6 +75,27 @@ impl VoicePipeline {
         }
     }
 
+    /// sherpa 真引擎档：ASR/TTS 走 sherpa-onnx 子进程适配器（平台无关）。
+    /// 配置缺失 → 返回 None（调用方回落默认档）。
+    pub fn sherpa_profile(
+        cfg: loomos_adapters_sherpa::SherpaConfig,
+        speech_dir: Option<PathBuf>,
+    ) -> Option<Self> {
+        cfg.available().ok()?;
+        Some(Self {
+            hotword: "小克".into(),
+            wake_required: true,
+            kws: Mutex::new(Box::new(TextGateKws::xiaoke())),
+            vad: SpeechSegmenter::default(),
+            asr: Mutex::new(Box::new(loomos_adapters_sherpa::SherpaAsr::new(
+                cfg.clone(),
+            ))),
+            tts: Mutex::new(Box::new(loomos_adapters_sherpa::SherpaTts::new(cfg))),
+            speech_dir,
+            seq: Mutex::new(0),
+        })
+    }
+
     /// Echo 档（无夹具也能全链自检：转写占位文本，执行器会拒绝但不崩）。
     pub fn echo_profile(speech_dir: Option<PathBuf>) -> Self {
         Self {

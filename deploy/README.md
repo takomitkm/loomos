@@ -39,3 +39,4 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 - "配置项已启用" ≠ "功能已运行"（11 §11.3.2）——WatchdogSec/MemoryMax 写了不算，
   要有运行时证据
 - L2/L3 板测（NPU/DMA）必须人工窗口，不进无人值守 CI
+- 2026-11-20：真引擎适配器 loomos-adapters-sherpa 落地（sherpa-onnx Python API 子进程路线，宿主实跑证据见 EVIDENCE）。

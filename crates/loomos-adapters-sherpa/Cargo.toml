@@ -1,0 +1,12 @@
+[package]
+name = "loomos-adapters-sherpa"
+version.workspace = true
+edition.workspace = true
+description = "sherpa-onnx 真引擎适配器：Python API 子进程驱动（平台无关，Windows/aarch64 Linux 同一套命令），实现 loomos-audio 的 Asr/Tts trait"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+loomos-audio = { workspace = true }

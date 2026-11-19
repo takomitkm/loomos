@@ -6,6 +6,7 @@ members = [
     "crates/loomos-inference",
     "crates/loomos-device",
     "crates/loomos-audio",
+    "crates/loomos-adapters-sherpa",
     "crates/loomos-nlu",
     "crates/loomos-home",
     "crates/loomos-executor",
@@ -36,6 +37,7 @@ loomos-sys = { path = "crates/loomos-sys" }
 loomos-inference = { path = "crates/loomos-inference" }
 loomos-device = { path = "crates/loomos-device" }
 loomos-audio = { path = "crates/loomos-audio" }
+loomos-adapters-sherpa = { path = "crates/loomos-adapters-sherpa" }
 loomos-nlu = { path = "crates/loomos-nlu" }
 loomos-home = { path = "crates/loomos-home" }
 loomos-vision = { path = "crates/loomos-vision" }
