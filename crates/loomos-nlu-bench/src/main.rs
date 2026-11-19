@@ -196,7 +196,7 @@ struct RuntimeInitArgs {
 const ALLOC_WITH_SYSTEM_ALLOCATOR: u32 = 2;
 
 #[cfg(feature = "wamr")]
-#[link(name = "vmlib")]
+#[link(name = "iwasm")]
 unsafe extern "C" {
     fn wasm_runtime_full_init(init_args: *mut RuntimeInitArgs) -> bool;
     fn wasm_runtime_load(
