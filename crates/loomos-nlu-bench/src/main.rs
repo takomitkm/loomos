@@ -486,7 +486,7 @@ impl ModeCtx {
             "interp" | "aot" => {
                 let path = module_path.expect("module path");
                 let t = Instant::now();
-                let buf = std::fs::read(path).unwrap_or_else(|e| {
+                let mut buf = std::fs::read(path).unwrap_or_else(|e| {
                     eprintln!("读模块失败 {path}: {e}");
                     std::process::exit(2);
                 });
