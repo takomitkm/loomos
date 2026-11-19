@@ -69,6 +69,7 @@ docs/dev 新增（上文编号规则同样适用）：
 - PROTOTYPE.md                 # 原型范围：旧功能保留/删减清单 + 视频路自研(§2.5) + 真实引擎接入点
 - EVIDENCE.md                  # 实测数据台账（旧板读数 + 本仓库验证记录）
 - engineering/03-OS代劳清单.md # 内核 5.4 缺口撑起的用户态工作盘点：哪些该让 OS 代劳（A 保留/B 立刻代劳/C 永久保留/D 换内核解锁）
+- engineering/04-OS功能依赖与自实现删减.md # loomos 用了 OS 的哪些功能（≤15 syscall 族）+ 参考 OS 语义删减成自实现的最小形态
 
 新增规则：
 - engineering = 工程纪律（Agent 行为规范 / unsafe / 契约模板），与机型无关
