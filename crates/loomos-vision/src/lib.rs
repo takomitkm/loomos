@@ -23,6 +23,8 @@
 pub mod embed;
 pub mod frame;
 pub mod gallery;
+#[cfg(feature = "ort")]
+pub mod ort_adapter;
 pub mod pad;
 pub mod pipeline;
 pub mod provider;

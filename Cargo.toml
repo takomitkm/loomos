@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/loomos-runtime",
     "crates/loomos-sys",
+    "crates/loomos-ort-sys",
     "crates/loomos-inference",
     "crates/loomos-device",
     "crates/loomos-audio",
@@ -34,6 +35,7 @@ toml = "0.8"
 
 loomos-runtime = { path = "crates/loomos-runtime" }
 loomos-sys = { path = "crates/loomos-sys" }
+loomos-ort-sys = { path = "crates/loomos-ort-sys" }
 loomos-inference = { path = "crates/loomos-inference" }
 loomos-device = { path = "crates/loomos-device" }
 loomos-audio = { path = "crates/loomos-audio" }

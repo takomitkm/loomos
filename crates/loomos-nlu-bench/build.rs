@@ -11,6 +11,11 @@ fn main() {
         Ok(dir) => {
             println!("cargo:rustc-link-search=native={dir}");
             println!("cargo:rustc-link-lib=static=iwasm");
+            // WAMR windows 平台静态库的系统依赖（CI 实测）
+            if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+                println!("cargo:rustc-link-lib=bcrypt");
+                println!("cargo:rustc-link-lib=pathcch");
+            }
         }
         Err(_) if want_wamr => {
             panic!("wamr feature 需要 IWASM_LIB_DIR 指向 libiwasm.a 所在目录")

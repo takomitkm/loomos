@@ -4,12 +4,17 @@ version.workspace = true
 edition.workspace = true
 description = "loomos 视频路：帧源→人脸检测→特征匹配→PAD 防伪→录制/直播，全引擎 trait 化可拆卸（契约对齐 fmql30tai-sdi-npu-face-recognition）"
 
+[features]
+ort = ["dep:loomos-ort-sys"]
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+loomos-ort-sys = { workspace = true, optional = true }
 loomos-runtime = { workspace = true }
 loomos-device = { workspace = true }
 
 [dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
