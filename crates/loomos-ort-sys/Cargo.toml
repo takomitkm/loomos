@@ -1,0 +1,8 @@
+[package]
+name = "loomos-ort-sys"
+version.workspace = true
+edition.workspace = true
+description = "onnxruntime.dll 最小 unsafe 绑定（LoadLibrary 动态加载，OrtApi 槽位索引生成）——vision 引擎的可信边界"
+
+[dependencies]
+thiserror = { workspace = true }

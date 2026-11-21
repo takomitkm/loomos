@@ -1,11 +1,11 @@
 name: nlu-bench
 
 # loomos-nlu 三形态（native / WAMR interp / WAMR aot）× 三目标（x86_64-linux、
-# aarch64-linux、x86_64-windows）的产物流水线：
-#   - 业务 wasm 模块（loomos-nlu-wasm-wrap → wasm32-wasip1）
-#   - wamrc（linux + windows 各自构建，AOT 编译器与目标 OS 同宿主）
-#   - 三份 .aot（x86_64-linux / aarch64-linux 在 linux wamrc 产出；x86_64-windows 在 windows wamrc 产出）
-#   - bench 可执行文件 ×3（x86_64-linux / aarch64-linux / x86_64-windows）
+# aarch64-linux、x86_64-windows）的产物流水线。
+# 修订 v2（2026-11-20，首轮 CI 实测修复）：
+#   - wasm job：dtolnay action 的 targets 输入未生效 → 显式 rustup target add
+#   - vmlib 实际产物名是 libiwasm.a（OUTPUT_NAME=iwasm）→ ls/链接全部对齐
+#   - wamrc-windows：git clone 深浅检出到 10% 即静默返回 → 改 tarball 下载解包
 # 运行与测量在本地完成（本机 + QEMU），本 workflow 只负责编译。
 
 on:
@@ -25,8 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-wasip1
+      - name: 显式安装 wasm32-wasip1 target
+        run: rustup target add wasm32-wasip1
       - name: build
         run: |
           RUSTFLAGS="-C panic=abort" cargo build --release --target wasm32-wasip1 -p loomos-nlu-wasm-wrap
@@ -68,8 +68,14 @@ jobs:
     steps:
       - name: clone WAMR
         run: git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
-      - name: clone LLVM 18.1.8
-        run: git clone --depth 1 --branch llvmorg-18.1.8 https://github.com/llvm/llvm-project.git wasm-micro-runtime/core/deps/llvm
+      - name: 下载 LLVM 18.1.8 tarball（git clone 浅检出不稳，走 tarball）
+        shell: bash
+        run: |
+          curl -L --retry 3 -o llvm.tar.gz \
+            https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-18.1.8.tar.gz
+          tar -xzf llvm.tar.gz
+          mv llvm-project-llvmorg-18.1.8 wasm-micro-runtime/core/deps/llvm
+          ls wasm-micro-runtime/core/deps/llvm/llvm/CMakeLists.txt
       - name: load MSVC env
         uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -149,7 +155,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: clone WAMR + 构建 libvmlib.a
+      - name: clone WAMR + 构建 libiwasm.a
         run: |
           git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
           cmake -S wasm-micro-runtime -B vmlib-build -G Ninja \
@@ -159,7 +165,7 @@ jobs:
             -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_SIMD=1 \
             -DWAMR_BUILD_MULTI_MODULE=0 -DBUILD_SHARED_LIBS=OFF
           ninja -C vmlib-build vmlib
-          ls -l vmlib-build/libvmlib.a
+          ls -l vmlib-build/libiwasm.a
       - uses: dtolnay/rust-toolchain@stable
       - name: build bench
         run: IWASM_LIB_DIR="$GITHUB_WORKSPACE/vmlib-build" cargo build --release -p loomos-nlu-bench --features wamr
@@ -176,7 +182,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: clone WAMR + 构建 libvmlib.a
+      - name: clone WAMR + 构建 libiwasm.a
         run: |
           git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
           cmake -S wasm-micro-runtime -B vmlib-build -G Ninja \
@@ -186,7 +192,7 @@ jobs:
             -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_SIMD=1 \
             -DWAMR_BUILD_MULTI_MODULE=0 -DBUILD_SHARED_LIBS=OFF
           ninja -C vmlib-build vmlib
-          ls -l vmlib-build/libvmlib.a
+          ls -l vmlib-build/libiwasm.a
       - uses: dtolnay/rust-toolchain@stable
       - name: build bench
         run: IWASM_LIB_DIR="$GITHUB_WORKSPACE/vmlib-build" cargo build --release -p loomos-nlu-bench --features wamr
@@ -203,7 +209,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: clone WAMR + 构建 libvmlib.a（__try SEH 需 MSVC，本机无 MSVC/clang 故在 CI 构建）
+      - name: clone WAMR + 构建 libiwasm（__try SEH 需 MSVC）
         shell: bash
         run: |
           git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git
@@ -214,7 +220,7 @@ jobs:
             -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_SIMD=1 \
             -DWAMR_BUILD_MULTI_MODULE=0 -DBUILD_SHARED_LIBS=OFF
           cmake --build vmlib-build --config Release --target vmlib
-          ls -l vmlib-build/Release/libvmlib.a || ls -l vmlib-build/libvmlib.a
+          ls -l vmlib-build/Release/iwasm.lib || ls -l vmlib-build/iwasm.lib
       - uses: dtolnay/rust-toolchain@stable
       - name: build bench
         shell: bash
