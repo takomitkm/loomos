@@ -66,8 +66,8 @@ jobs:
       - name: 构建 WAMR（钉死 rev，最小 feature 集，平台各自产物）
         shell: bash
         run: |
-          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
-          cd wamr-src && git checkout "$WAMR_REV"
+          git clone --no-checkout https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
+          cd wamr-src && git fetch --depth 1 origin "$WAMR_REV" && git checkout FETCH_HEAD
           case "${{ matrix.os }}" in
             ubuntu-latest) PLAT=linux ;;
             windows-latest) PLAT=windows ;;
@@ -138,8 +138,8 @@ jobs:
       - name: 构建 wamrc
         run: |
           sudo apt-get update && sudo apt-get install -y llvm-18-dev libclang-18-dev clang-18
-          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
-          cd wamr-src && git checkout "$WAMR_REV"
+          git clone --no-checkout https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
+          cd wamr-src && git fetch --depth 1 origin "$WAMR_REV" && git checkout FETCH_HEAD
           cmake -S tools/wamrc -B wamrc-build -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
           cmake --build wamrc-build -j
       - name: wamrc → aarch64 AOT + 魔数校验

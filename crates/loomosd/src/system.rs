@@ -367,6 +367,12 @@ impl System {
         });
         // Host ABI 装配（ADR-011 v1.1）：能力/配置/设备权威桥进 loomis-wamr；
         // stub 档（无 libiwasm）只注册静态策略，无运行时副作用。
+        #[cfg(test)]
+        {
+            let _g = crate::abi::core_test_guard();
+            crate::abi::assemble_host_abi(system.clone());
+        }
+        #[cfg(not(test))]
         crate::abi::assemble_host_abi(system.clone());
         Ok(system)
     }

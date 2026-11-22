@@ -233,9 +233,6 @@ pub mod abi {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-const CONFIG_OUT_CAP: usize = 4096;
-
 /// 经 Host ABI 的业务路径（奇偶校验框架）：与 ab_parse 语义一致（parse → JSON），
 /// 但执行中通过 loomis.log_v1 上报调用（wamr-link 档 CI 校验两条路径输出逐字节一致）。
 ///
@@ -257,8 +254,9 @@ pub extern "C" fn ab_parse_via_host(in_ptr: i32, in_len: i32) -> i32 {
 // SAFETY 契约由调用方保证：OUT_BUF 常驻线性内存且 len ≤ OUT_CAP。
 #[cfg(target_arch = "wasm32")]
 unsafe fn out_bytes(len: usize) -> &'static [u8] {
+    // edition 2024：unsafe fn 体内仍需显式 unsafe 块（CI 警告实证）
     let ptr = ab_out_ptr() as *const u8;
-    std::slice::from_raw_parts(ptr, len)
+    unsafe { std::slice::from_raw_parts(ptr, len) }
 }
 
 /// 非 wasm 目标的占位说明（宿主侧本 crate 仍可编译——ab_* 直调路径供 native harness）。

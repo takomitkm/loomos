@@ -8,6 +8,8 @@ stdenv.mkDerivation {
   version = "2026.11.20"; # wamr-src 钉死 commit 的日期（升级时同步改）
 
   src = wamrSrc;
+  # WAMR build-scripts/version.cmake 会写源码树（core/version.h）——nix 只读源需放可写
+  postPatch = "chmod -R u+w .";
   nativeBuildInputs = [ cmake ];
   # 官方 Linux 构建入口（product-mini/platforms/linux）
   sourceRoot = "source/product-mini/platforms/linux";

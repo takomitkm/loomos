@@ -247,6 +247,16 @@ impl HostAbiHandlers for GuestAbiBridge {
     }
 }
 
+/// 测试期全局 CORE 串行锁（abi 测试与 system 装配测试共用——CI Windows 实证
+/// 并行 assemble 会覆盖 CORE 造成属主句柄校验竞态）。
+#[cfg(test)]
+pub(crate) fn core_test_guard() -> std::sync::MutexGuard<'static, ()> {
+    static CORE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    CORE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 /// 取已装配的 HostAbiCore（Arc 由调用方持有，MutexGuard 生命周期安全）。
 fn installed_core() -> Result<Arc<loomos_wamr::host_abi::HostAbiCore>, u32> {
     loomos_wamr::host_abi::installed().ok_or(loomos_wamr::host_abi::code::ERR_UNLINKED)
@@ -263,15 +273,11 @@ mod tests {
     use crate::system::{System, SystemConfig};
     use loomos_runtime::Rights;
     use loomos_wamr::host_abi::{HandleTable, installed};
-    use std::sync::Mutex;
 
-    // install() 写全局 static CORE——所有 ABI 测试串行执行（同 loomis-wamr 测试纪律）
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
+    // install() 写全局 static CORE——所有触及 CORE 的测试串行执行
+    // （system::tests 的 assemble 也会 install——共用本锁，防覆盖竞态）
     fn guard() -> std::sync::MutexGuard<'static, ()> {
-        TEST_LOCK
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        super::core_test_guard()
     }
 
     fn system() -> Arc<System> {

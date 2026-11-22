@@ -11,4 +11,8 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 loomos-sys = { workspace = true }
 
+[features]
+# 透传 loomis-sys 的 Linux 后端（cross CI 探针测试门；cfg(feature) 需在本 crate 声明）
+linux-backend = ["loomos-sys/linux-backend"]
+
 [dev-dependencies]

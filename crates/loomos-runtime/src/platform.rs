@@ -103,6 +103,27 @@ mod tests {
 
     #[test]
     fn probe_reports_three_items_with_honest_levels() {
+        // Linux 下探针会真实 setrlimit(RLIMIT_AS)（进程级、测试内不可恢复）——
+        // 直接跑会破坏同二进制后续并行测试线程的栈分配（CI ubuntu 实证：
+        // "failed to allocate an alternative stack"）。改为子进程执行探针，
+        // 进程级副作用随子进程退出消失；父进程只验证退出码。测试语义不变。
+        #[cfg(feature = "linux-backend")]
+        {
+            if std::env::var_os("LOOMOS_PROBE_CHILD").is_none() {
+                let exe = std::env::current_exe().expect("current_exe");
+                let status = std::process::Command::new(exe)
+                    .args([
+                        "--exact",
+                        "platform::tests::probe_reports_three_items_with_honest_levels",
+                        "--nocapture",
+                    ])
+                    .env("LOOMOS_PROBE_CHILD", "1")
+                    .status()
+                    .expect("spawn probe child");
+                assert!(status.success(), "子进程探针失败: {status}");
+                return;
+            }
+        }
         let budget = CpuBudget {
             runtime_us: 30_000,
             period_us: 100_000,
