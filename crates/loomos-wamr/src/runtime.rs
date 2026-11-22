@@ -80,15 +80,15 @@ impl RuntimeHost {
         }
         if sys::linked() {
             let mut args = sys::RuntimeInitArgs::system_allocator();
+            // Host ABI 符号经 init_args 原子注册（full_init 内完成）——
+            // 独立 register_natives 调用在本仓构建上 SIGSEGV（CI 实证，已弃用）
+            let (mod_name, sym_ptr, sym_n) = crate::host_abi::leaked_symbol_table()?;
+            args.native_module_name = mod_name;
+            args.native_symbols = sym_ptr;
+            args.n_native_symbols = sym_n;
             if let Err(e) = sys::full_init(&mut args) {
                 RUNNING.store(false, Ordering::SeqCst);
                 return Err(e.into());
-            }
-            // Host ABI 符号注册（full_init 之后、load/instantiate 之前；
-            // 提前注册会被 WAMR 拒绝——CI E2E 实证）
-            if let Err(e) = crate::host_abi::register_symbols() {
-                RUNNING.store(false, Ordering::SeqCst);
-                return Err(e);
             }
         }
         tracing::info!(

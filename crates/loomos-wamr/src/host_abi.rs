@@ -693,8 +693,42 @@ fn build_symbol_table() -> Vec<(String, String, usize)> {
     out
 }
 
+/// Host ABI 原生符号注册数据（供 RuntimeInitArgs 原子注册路径）。
+/// 返回 (module_name ptr, symbols ptr, count)。表/字符串泄漏至进程结束。
+/// **只在 full_init 的 init_args 里消费**——独立的 register_natives 调用在
+/// 本仓 WAMR 构建上 SIGSEGV（CI 实证），已弃用。
+pub fn leaked_symbol_table() -> WamrResult<(*const c_char, *mut loomos_wamr_sys::NativeSymbol, u32)>
+{
+    static BUILT: OnceLock<()> = OnceLock::new();
+    if BUILT.set(()).is_err() {
+        // 已构建：直接重用（符号表是 static 的——重建会泄漏第二份）
+        return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
+            "符号表已构建（内部错误）".into(),
+        )));
+    }
+    let table = build_symbol_table();
+    let mut native: Vec<loomos_wamr_sys::NativeSymbol> = Vec::with_capacity(table.len());
+    for (name, sig, addr) in &table {
+        let field = name
+            .strip_prefix(&format!("{HOST_NAMESPACE}."))
+            .unwrap_or(name);
+        native.push(loomos_wamr_sys::NativeSymbol {
+            symbol: leaked_cstr(field),
+            func_ptr: *addr as *mut c_void,
+            signature: leaked_cstr(sig),
+        });
+    }
+    let native = Box::leak(native.into_boxed_slice());
+    Ok((
+        leaked_cstr(HOST_NAMESPACE),
+        native.as_mut_ptr(),
+        native.len() as u32,
+    ))
+}
+
 /// 向 WAMR 注册 Host ABI 符号表（命名空间 "loomos"）。
-/// stub 档 → Err(NotLinked)。注册一次；重复注册幂等返回 Ok。
+/// **已弃用独立调用路径**（SIGSEGV 实证）；stub 档 → Err(NotLinked)。
+/// link 档由 RuntimeHost::init 经 init_args 原子注册——本函数仅保留兼容签名。
 pub fn register_symbols() -> WamrResult<()> {
     static REGISTERED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     // 注意：注册依赖运行时已初始化（wasm_runtime_register_natives 在 full_init 前
