@@ -100,7 +100,7 @@ jobs:
         env:
           IWASM_LIB_DIR: ${{ steps.lib.outputs.dir }}
           LOOMOS_E2E_WASM: ${{ github.workspace }}/target/wasm32-wasip1/release/loomos_nlu_wasm_wrap.wasm
-        run: cargo test -p loomos-wamr -p loomos-wamr-sys --features loomos-wamr/wamr-link
+        run: cargo test -p loomos-wamr -p loomos-wamr-sys --features loomos-wamr/wamr-link -- --test-threads=1 --nocapture
       - name: 提取奇偶校验和
         shell: bash
         run: |
