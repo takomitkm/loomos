@@ -66,19 +66,25 @@ jobs:
       - name: 构建 WAMR（钉死 rev，最小 feature 集，平台各自产物）
         shell: bash
         run: |
-          git clone --no-checkout https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
-          cd wamr-src && git fetch --depth 1 origin "$WAMR_REV" && git checkout FETCH_HEAD
+          rm -rf wamr-src
+          git init -q wamr-src
+          cd wamr-src
+          git remote add origin https://github.com/bytecodealliance/wasm-micro-runtime.git
+          git fetch -q --depth 1 origin "$WAMR_REV"
+          git checkout -q -f FETCH_HEAD
+          test -d product-mini/platforms || { echo "WAMR 树不完整"; ls; exit 1; }
           case "${{ matrix.os }}" in
             ubuntu-latest) PLAT=linux ;;
             windows-latest) PLAT=windows ;;
             macos-latest) PLAT=darwin ;;
           esac
-          cmake -S "product-mini/platforms/$PLAT" -B build \
-            -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1 \
-            -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
-            -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1 \
-            -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
-            -DWAMR_BUILD_MULTI_MODULE=0
+          if [ "$PLAT" = "windows" ]; then
+            # MSVC 对 aot_reloc_x86_64.c 报 C2099（非常量初始化）——clangcl 工具集可编；
+            # runner 默认生成器 = Visual Studio 18 2026，不显式指定 -G（CI 实证）
+            cmake -T clangcl               -S "product-mini/platforms/$PLAT" -B build               -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1               -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0               -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1               -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0               -DWAMR_BUILD_MULTI_MODULE=0
+          else
+            cmake -S "product-mini/platforms/$PLAT" -B build               -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1               -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0               -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1               -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0               -DWAMR_BUILD_MULTI_MODULE=0
+          fi
           cmake --build build --config Release
       - name: 定位 libiwasm 静态库
         id: lib
@@ -144,8 +150,8 @@ jobs:
           git remote add origin https://github.com/bytecodealliance/wasm-micro-runtime.git
           git fetch -q --depth 1 origin "$WAMR_REV"
           git checkout -q -f FETCH_HEAD
-          test -d tools/wamrc || { echo "wamrc 目录缺失"; ls; exit 1; }
-          cmake -S tools/wamrc -B wamrc-build -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
+          test -d wamr-compiler || { echo "wamrc 目录缺失（上游改名 wamr-compiler）"; ls; exit 1; }
+          cmake -S wamr-compiler -B wamrc-build -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
           cmake --build wamrc-build -j
       - name: wamrc → aarch64 AOT + 魔数校验
         run: |

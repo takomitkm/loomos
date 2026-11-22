@@ -11,7 +11,7 @@ stdenv.mkDerivation {
   version = "2026.11.20"; # 与 wamr.nix 同源同版本
 
   src = wamrSrc;
-  sourceRoot = "source/tools/wamrc";
+  sourceRoot = "source/wamr-compiler"; # 上游已改名（tools/wamrc → wamr-compiler，钉死 rev 实证）
   # WAMR build-scripts/version.cmake 写源码树（core/version.h，在 sourceRoot 之外）——
   # postPatch 覆盖不到，postUnpack 放开整树（CI -L 实证 Permission denied）
   postUnpack = ''
