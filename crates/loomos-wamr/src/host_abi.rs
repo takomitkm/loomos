@@ -63,8 +63,10 @@ pub static IFACE_CAPABILITY: &[(&str, &str)] = &[
 /// 每条：(接口名, WAMR 签名, 返回约定, 说明)。
 pub static HOST_ABI_V1: &[(&str, &str, &str, &str)] = &[
     (
+        // void 结果签名以 ")" 结尾（不带尾部 v）——check_symbol_signature 实证：
+        // result_count==0 时 ')' 后必须紧跟 NUL（CI resolve 失败→unlinked 实证）
         "loomos.log_v1",
-        "(iii)v",
+        "(iii)",
         "void",
         "结构化日志（fire-and-forget，无返回错误路径）",
     ),
@@ -848,9 +850,14 @@ mod tests {
             let close = sig.find(')').expect("{name}: 签名缺 ')'");
             assert!(close >= 1, "{name}: 空参签名应为 ()X 形态");
             let ret = &sig[close + 1..];
+            // void 结果：')' 后必须紧跟 NUL——签名不得带尾部 v
+            // （check_symbol_signature 实证；CI resolve 失败→unlinked）
+            if ret == "v" {
+                panic!("{name}: void 签名不得带尾部 v: {sig}");
+            }
             assert!(
-                matches!(ret, "v" | "i" | "I" | "f" | "F"),
-                "{name}: 返回类型 {ret:?} 非法"
+                matches!(ret, "" | "i" | "I" | "f" | "F"),
+                "{name}: 返回类型 {ret:?} 非法（空=void）"
             );
             assert!(
                 sig.chars()
