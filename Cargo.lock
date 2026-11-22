@@ -295,6 +295,7 @@ dependencies = [
  "loomos-nlu",
  "loomos-runtime",
  "loomos-vision",
+ "loomos-wamr",
  "serde",
  "serde_json",
  "thiserror",

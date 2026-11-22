@@ -23,5 +23,6 @@ loomos-executor = { workspace = true }
 loomos-vision = { workspace = true }
 loomos-adapters-sherpa = { workspace = true }
 loomos-inference = { workspace = true }
+loomos-wamr = { workspace = true }
 
 [dev-dependencies]

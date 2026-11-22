@@ -351,7 +351,7 @@ impl System {
             serde_json::json!({"note": "assembly complete", "components": 5}),
         );
 
-        Ok(Arc::new(Self {
+        let system = Arc::new(Self {
             events,
             caps,
             voice_token,
@@ -364,7 +364,11 @@ impl System {
             config,
             registry_json,
             started_at_ms: now_ms(),
-        }))
+        });
+        // Host ABI 装配（ADR-011 v1.1）：能力/配置/设备权威桥进 loomis-wamr；
+        // stub 档（无 libiwasm）只注册静态策略，无运行时副作用。
+        crate::abi::assemble_host_abi(system.clone());
+        Ok(system)
     }
 
     fn seed_config(

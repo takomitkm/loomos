@@ -38,6 +38,10 @@ pub mod code {
     pub const ERR_UNSUPPORTED: u32 = 6;
     pub const ERR_BUSY: u32 = 7;
     pub const ERR_UNLINKED: u32 = 8;
+    /// 操作结果无法确认（后端超时/挂死）——**不得映射 ERR_INVALID/Failed**（AGENTS.md §2.7）。
+    pub const ERR_UNKNOWN: u32 = 9;
+    /// 操作已取消（Guest 可区分取消与失败）。
+    pub const ERR_CANCELLED: u32 = 10;
 }
 
 /// 接口 → 所需能力（空串 = 无能力要求）。接口标识 ≠ 权限授予。
@@ -256,6 +260,10 @@ pub enum PollStatus {
     Pending,
     /// 执行失败（带稳定错误码）。
     Failed(u32),
+    /// 结果无法确认——与 Failed 严格区分（AGENTS.md §2.7：Unknown 不谎报）。
+    Unknown,
+    /// 已取消。
+    Cancelled,
 }
 
 impl PollStatus {
@@ -264,6 +272,8 @@ impl PollStatus {
             PollStatus::Done => code::OK as i32,
             PollStatus::Pending => code::ERR_BUSY as i32,
             PollStatus::Failed(c) => -(*c as i32),
+            PollStatus::Unknown => -(code::ERR_UNKNOWN as i32),
+            PollStatus::Cancelled => -(code::ERR_CANCELLED as i32),
         }
     }
 }
@@ -765,6 +775,8 @@ mod tests {
             code::ERR_UNSUPPORTED,
             code::ERR_BUSY,
             code::ERR_UNLINKED,
+            code::ERR_UNKNOWN,
+            code::ERR_CANCELLED,
         ];
         let set: std::collections::BTreeSet<u32> = codes.iter().copied().collect();
         assert_eq!(set.len(), codes.len(), "稳定错误码必须互异");
