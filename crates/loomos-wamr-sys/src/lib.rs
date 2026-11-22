@@ -523,6 +523,47 @@ pub fn alloc_runtime_bytes(bytes: &[u8]) -> Result<*mut c_void, SysError> {
     }
 }
 
+/// 注册 Host ABI 符号表（Host ABI 主路径）：
+/// 表数组经 wasm_runtime_malloc 分配+复制（destroy 时 wasm_native_destroy 用
+/// wasm_runtime_free 释放——分配器配对），随后调用 wasm_runtime_register_natives。
+/// **须在 full_init 之后调用**。返回 WAMR 的 bool 结果。
+pub fn register_host_natives(
+    module_name: *const c_char,
+    symbols: &[NativeSymbol],
+) -> Result<bool, SysError> {
+    #[cfg(feature = "link")]
+    {
+        let mut tmp = symbols.to_vec();
+        // SAFETY: tmp 为 repr(C) 数组副本，指针由 wasm_runtime_malloc 分配
+        // （destroy 时由 wasm_runtime_free 配对释放），内容立即写入并注册。
+        let arr = unsafe { raw::wasm_runtime_malloc(tmp.len() as u32) };
+        if arr.is_null() {
+            return Err(SysError::InitFailed("wasm_runtime_malloc 失败".into()));
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                tmp.as_ptr().cast::<u8>(),
+                arr.cast::<u8>(),
+                tmp.len() * std::mem::size_of::<NativeSymbol>(),
+            );
+        }
+        // SAFETY: arr 指向合法 NativeSymbol 数组（上方复制）；module_name NUL 结尾。
+        let ok = unsafe {
+            raw::wasm_runtime_register_natives(
+                module_name,
+                arr.cast::<NativeSymbol>(),
+                tmp.len() as u32,
+            )
+        };
+        Ok(ok)
+    }
+    #[cfg(not(feature = "link"))]
+    {
+        let _ = (module_name, symbols);
+        Err(SysError::NotLinked)
+    }
+}
+
 /// 注册原生符号表（Host ABI；module_name 用 "loomos" 命名空间，NULL = 全局注册）。
 pub fn register_natives(
     module_name: *const c_char,

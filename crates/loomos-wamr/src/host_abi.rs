@@ -697,38 +697,34 @@ fn build_symbol_table() -> Vec<(String, String, usize)> {
 /// 返回 (module_name ptr, symbols ptr, count)。表/字符串泄漏至进程结束。
 /// **只在 full_init 的 init_args 里消费**——独立的 register_natives 调用在
 /// 本仓 WAMR 构建上 SIGSEGV（CI 实证），已弃用。
-pub fn leaked_symbol_table() -> WamrResult<(*const c_char, *mut loomos_wamr_sys::NativeSymbol, u32)>
-{
-    static BUILT: OnceLock<()> = OnceLock::new();
-    if BUILT.set(()).is_err() {
-        return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
-            "符号表已构建（内部错误）".into(),
-        )));
+pub fn register_runtime_natives() -> WamrResult<()> {
+    static REGISTERED: OnceLock<()> = OnceLock::new();
+    if REGISTERED.set(()).is_err() {
+        return Ok(()); // 已注册（幂等）
     }
     let table = build_symbol_table();
-    let n = table.len() as u32;
-    // 序列化 NativeSymbol 数组的字节布局（repr(C)：4×8 字节/条目，无填充）。
-    // 字段：symbol(8) func_ptr(8) signature(8) attachment(8=null)——第 4 字段
-    // 是 lib_export.h 实证（缺失=整表错位 8 字节，CI SIGSEGV/double-free 实证）。
-    // 符号名/签名字符串 std 泄漏（WAMR 不 free 字符串，只 free 数组本身）。
-    let mut layout: Vec<u8> = Vec::with_capacity(table.len() * 32);
+    let mut native: Vec<loomos_wamr_sys::NativeSymbol> = Vec::with_capacity(table.len());
     for (name, sig, addr) in &table {
         let field = name
             .strip_prefix(&format!("{HOST_NAMESPACE}."))
             .unwrap_or(name);
-        layout.extend_from_slice((leaked_cstr(field) as usize).to_ne_bytes().as_slice());
-        layout.extend_from_slice({ *addr }.to_ne_bytes().as_slice());
-        layout.extend_from_slice((leaked_cstr(sig) as usize).to_ne_bytes().as_slice());
-        layout.extend_from_slice(&0usize.to_ne_bytes());
+        native.push(loomos_wamr_sys::NativeSymbol {
+            symbol: leaked_cstr(field),
+            func_ptr: *addr as *mut c_void,
+            signature: leaked_cstr(sig),
+            attachment: std::ptr::null_mut(),
+        });
     }
-    // 数组用 WAMR 分配器分配——destroy 时 wasm_runtime_free 合法（std 泄漏被
-    // WAMR free = double free/corruption 实证）
-    let arr = loomos_wamr_sys::alloc_runtime_bytes(&layout)?;
-    Ok((
-        leaked_cstr(HOST_NAMESPACE),
-        arr as *mut loomos_wamr_sys::NativeSymbol,
-        n,
-    ))
+    // **必须 full_init 之后调用**：表经 wasm_runtime_malloc 分配（分配器就绪），
+    // destroy 时 wasm_native_destroy 用 wasm_runtime_free 释放——分配器配对合法。
+    let ok = loomos_wamr_sys::register_host_natives(leaked_cstr(HOST_NAMESPACE), &native)
+        .map_err(WamrError::from)?;
+    if !ok {
+        return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
+            "register_natives 返回 false".into(),
+        )));
+    }
+    Ok(())
 }
 
 /// 向 WAMR 注册 Host ABI 符号表（命名空间 "loomos"）。
