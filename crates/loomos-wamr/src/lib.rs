@@ -32,8 +32,8 @@ pub mod sha256;
 
 pub use aot_compat::AotCompatKey;
 pub use error::{WamrError, WamrResult};
-pub use host_abi::register_runtime_natives;
 pub use host_abi::{HOST_ABI_VERSION, HOST_NAMESPACE};
+pub use host_abi::{register_runtime_natives, unregister_runtime_natives};
 pub use instance::{InstanceHandle, InstanceManager, InstanceSpec, Reservation};
 pub use module::{ExecMode, LoadedModule, ModuleFormat, ModuleManager, detect_format};
 pub use package::{ComponentPackage, PackageManifest};

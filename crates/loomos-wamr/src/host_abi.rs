@@ -693,10 +693,25 @@ fn build_symbol_table() -> Vec<(String, String, usize)> {
     out
 }
 
-/// Host ABI 原生符号注册数据（供 RuntimeInitArgs 原子注册路径）。
-/// 返回 (module_name ptr, symbols ptr, count)。表/字符串泄漏至进程结束。
-/// **只在 full_init 的 init_args 里消费**——独立的 register_natives 调用在
-/// 本仓 WAMR 构建上 SIGSEGV（CI 实证），已弃用。
+/// Host ABI 注册凭据（unregister 用；usize 存地址——裸指针非 Sync）。
+static UNREGISTER_CREDENTIALS: OnceLock<(usize, usize)> = OnceLock::new();
+
+/// shutdown 用：注销 Host ABI 符号表（**须在 wasm_runtime_destroy 之前**调用；
+/// 幂等）。unregister 只 free WAMR 节点，数组（std 泄漏，进程生命周期）不被触碰——
+/// wasm_native.c unregister 实证（pinned rev）。
+pub fn unregister_runtime_natives() {
+    if let Some((m, s)) = UNREGISTER_CREDENTIALS.get() {
+        let _ = loomos_wamr_sys::unregister_natives(
+            *m as *const std::ffi::c_char,
+            *s as *mut loomos_wamr_sys::NativeSymbol,
+        );
+    }
+}
+
+/// 注册 Host ABI 符号表（**须在 RuntimeHost::init 的 full_init 之后调用**）。
+/// 数组 4 字段（attachment=null，lib_export.h 实证）；std 泄漏至进程结束；
+/// WAMR 只存指针不复制、不 free——shutdown 先 unregister 再 destroy。
+/// 符号字段为裸函数名（module+field 分离解析）。
 pub fn register_runtime_natives() -> WamrResult<()> {
     static REGISTERED: OnceLock<()> = OnceLock::new();
     if REGISTERED.set(()).is_err() {
@@ -715,53 +730,30 @@ pub fn register_runtime_natives() -> WamrResult<()> {
             attachment: std::ptr::null_mut(),
         });
     }
-    // **必须 full_init 之后调用**：表经 wasm_runtime_malloc 分配（分配器就绪），
-    // destroy 时 wasm_native_destroy 用 wasm_runtime_free 释放——分配器配对合法。
-    let ok = loomos_wamr_sys::register_host_natives(leaked_cstr(HOST_NAMESPACE), &native)
+    let mut native = native.into_boxed_slice();
+    let credentials = leaked_cstr(HOST_NAMESPACE);
+    let ok = loomos_wamr_sys::register_natives_checked(credentials, &mut native)
         .map_err(WamrError::from)?;
     if !ok {
         return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
             "register_natives 返回 false".into(),
         )));
     }
+    UNREGISTER_CREDENTIALS
+        .set((credentials as usize, native.as_mut_ptr() as usize))
+        .ok();
     Ok(())
 }
 
-/// 向 WAMR 注册 Host ABI 符号表（命名空间 "loomos"）。
-/// **已弃用独立调用路径**（SIGSEGV 实证）；stub 档 → Err(NotLinked)。
-/// link 档由 RuntimeHost::init 经 init_args 原子注册——本函数仅保留兼容签名。
+/// 旧独立注册入口——**已弃用**（注册统一走 RuntimeHost::init；时序与分配器
+/// 语义经 CI gdb/valgrind 定案）。保留兼容签名：stub 档报 NotLinked，
+/// link 档视为已由 init 注册。
 pub fn register_symbols() -> WamrResult<()> {
-    static REGISTERED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    // 注意：注册依赖运行时已初始化（wasm_runtime_register_natives 在 full_init 前
-    // 返回 false——CI E2E 实证）。失败不闩锁，允许 init 后重试。
-    if REGISTERED.load(std::sync::atomic::Ordering::SeqCst) {
-        return Ok(());
+    if loomos_wamr_sys::linked() {
+        Ok(())
+    } else {
+        Err(WamrError::NotLinked)
     }
-    let table = build_symbol_table();
-    let mut native: Vec<loomos_wamr_sys::NativeSymbol> = Vec::with_capacity(table.len());
-    for (name, sig, addr) in &table {
-        // WAMR 按 module(命名空间)+field(函数名) 分离解析——module_name 已是
-        // "loomos"，符号字段必须是裸函数名（log_v1）。带前缀注册 = unlinked
-        // import（CI E2E 实证 'failed to call unlinked import function'）。
-        let field = name
-            .strip_prefix(&format!("{HOST_NAMESPACE}."))
-            .unwrap_or(name);
-        native.push(loomos_wamr_sys::NativeSymbol {
-            symbol: leaked_cstr(field),
-            func_ptr: *addr as *mut c_void,
-            signature: leaked_cstr(sig),
-            attachment: std::ptr::null_mut(),
-        });
-    }
-    let native = Box::leak(native.into_boxed_slice());
-    let ok = loomos_wamr_sys::register_natives(leaked_cstr(HOST_NAMESPACE), native)
-        .map_err(WamrError::from)?;
-    if !ok {
-        return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
-            "register_natives 返回 false".into(),
-        )));
-    }
-    Ok(())
 }
 
 /// NUL 结尾的 C 字符串，泄漏至进程结束（符号名/签名要求 'static）。
@@ -1058,10 +1050,7 @@ mod tests {
         }
         let _g = guard();
         let r = register_symbols();
-        assert!(matches!(
-            r,
-            Err(WamrError::Sys(loomos_wamr_sys::SysError::NotLinked))
-        ));
+        assert!(matches!(r, Err(WamrError::NotLinked)));
     }
 
     #[test]

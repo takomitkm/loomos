@@ -141,8 +141,10 @@ impl RuntimeHost {
                 tracing::error!(module = %name, error = %e, "shutdown: 模块卸载失败");
             }
         }
-        // 4. 预算已随实例释放；5. 销毁 WAMR 运行时（最后）
+        // 4. 预算已随实例释放；5. 注销符号表（destroy 前——节点由 WAMR free，
+        // 数组 caller-owned 不触碰）→ 销毁 WAMR 运行时（最后）
         if sys::linked() {
+            crate::host_abi::unregister_runtime_natives();
             sys::destroy()?;
         }
         RUNNING.store(false, Ordering::SeqCst);

@@ -187,8 +187,10 @@ mod raw {
             app_offset: u64,
             size: u64,
         ) -> bool;
-        pub fn wasm_runtime_malloc(size: u32) -> *mut c_void;
-        pub fn wasm_runtime_free(ptr: *mut c_void);
+        pub fn wasm_native_unregister_natives(
+            module_name: *const c_char,
+            native_symbols: *mut NativeSymbol,
+        ) -> bool;
         pub fn wasm_runtime_register_natives(
             module_name: *const c_char,
             native_symbols: *mut NativeSymbol,
@@ -497,68 +499,44 @@ pub fn validate_app_addr(
     }
 }
 
-/// 运行时内存分配（表分配器与 WAMR 一致：destroy 时 wasm_runtime_free 我们的
-/// 表才是合法释放——std 泄漏分配被 free = double free/corruption 实证）。
-pub fn alloc_runtime_bytes(bytes: &[u8]) -> Result<*mut c_void, SysError> {
+/// 注册 Host ABI 符号表（**须在 full_init 之后**）。
+/// 数组 caller-owned（std 泄漏，进程生命周期存活）；shutdown 时先
+/// wasm_native_unregister_natives（只 free 节点，不碰数组）再 destroy。
+pub fn register_natives_checked(
+    module_name: *const c_char,
+    symbols: &mut [NativeSymbol],
+) -> Result<bool, SysError> {
     #[cfg(feature = "link")]
     {
-        // SAFETY: bytes.len() 字节请求（系统分配器档=malloc），内容立即复制，
-        // 配对释放由 WAMR destroy 承担（wasm_runtime_free）。
-        let p = unsafe { raw::wasm_runtime_malloc(bytes.len() as u32) };
-        if p.is_null() {
-            return Err(SysError::InitFailed(format!(
-                "wasm_runtime_malloc({}) 失败",
-                bytes.len()
-            )));
-        }
-        unsafe {
-            std::ptr::copy_nonoverlapping(bytes.as_ptr(), p.cast::<u8>(), bytes.len());
-        }
-        Ok(p)
+        // SAFETY: symbols 为调用方持有的合法数组；module_name NUL 结尾；
+        // 数组生命周期覆盖运行时全程（std 泄漏），注册后 WAMR 只读取。
+        let ok = unsafe {
+            raw::wasm_runtime_register_natives(
+                module_name,
+                symbols.as_mut_ptr(),
+                symbols.len() as u32,
+            )
+        };
+        Ok(ok)
     }
     #[cfg(not(feature = "link"))]
     {
-        let _ = bytes;
+        let _ = (module_name, symbols);
         Err(SysError::NotLinked)
     }
 }
 
-/// 注册 Host ABI 符号表（Host ABI 主路径）：
-/// 表数组经 wasm_runtime_malloc 分配+复制（destroy 时 wasm_native_destroy 用
-/// wasm_runtime_free 释放——分配器配对），随后调用 wasm_runtime_register_natives。
-/// **须在 full_init 之后调用**。返回 WAMR 的 bool 结果。
-pub fn register_host_natives(
+/// 注销 Host ABI 符号表（shutdown：destroy 之前——摘除节点并 free 节点，
+/// **数组由调用方所有**，WAMR 不触碰）。
+pub fn unregister_natives(
     module_name: *const c_char,
-    symbols: &[NativeSymbol],
-) -> Result<bool, SysError> {
+    symbols: *mut NativeSymbol,
+) -> Result<(), SysError> {
     #[cfg(feature = "link")]
     {
-        let mut tmp = symbols.to_vec();
-        // SAFETY: tmp 为 repr(C) 数组副本，指针由 wasm_runtime_malloc 分配
-        // （destroy 时由 wasm_runtime_free 配对释放），内容立即写入并注册。
-        // +64 余量：WAMR wasm_runtime_malloc 的 size 语义存疑（CI valgrind 实证
-        // malloc(352) 后 352 字节拷贝越界 24——疑似内部头扣除），余量吸收。
-        // 数组本体前 N 字节语义不变；free 由 WAMR destroy 配对。
-        let arr = unsafe { raw::wasm_runtime_malloc(tmp.len() as u32 + 64) };
-        if arr.is_null() {
-            return Err(SysError::InitFailed("wasm_runtime_malloc 失败".into()));
-        }
-        unsafe {
-            std::ptr::copy_nonoverlapping(
-                tmp.as_ptr().cast::<u8>(),
-                arr.cast::<u8>(),
-                tmp.len() * std::mem::size_of::<NativeSymbol>(),
-            );
-        }
-        // SAFETY: arr 指向合法 NativeSymbol 数组（上方复制）；module_name NUL 结尾。
-        let ok = unsafe {
-            raw::wasm_runtime_register_natives(
-                module_name,
-                arr.cast::<NativeSymbol>(),
-                tmp.len() as u32,
-            )
-        };
-        Ok(ok)
+        // SAFETY: module_name/symbols 与注册时同一指针（静态生命周期）。
+        unsafe { raw::wasm_native_unregister_natives(module_name, symbols) };
+        Ok(())
     }
     #[cfg(not(feature = "link"))]
     {
