@@ -1,0 +1,101 @@
+# platform.yml — Nix/Wasm/WAMR 平台化 CI（ADR-011 v1.1 / ADR-012，architecture/02 §2.5 N0–N4）
+#
+# 与 ci.yml（Host/Cross）互补：本工作流验证 Nix 钉死构建、WAMR 真链接、
+# wasm 组件构建与 wamrc AOT 产物。
+# 注意：Windows/macOS WAMR 构建用原生 runner（N4，另行追加）；本文件不含板测。
+
+name: platform
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  # WAMR 源码钉死（与 flake.nix wamr-src 一致；升级两处同步改）
+  WAMR_REV: 06f6c8c6e64e75eee6b8a3ce06ac2c7d10d015bf
+
+jobs:
+  nix:
+    # N0 验收：钉死 flake 评估 + 四包构建（loomos-host 含全仓 cargo test）+ 防漂移
+    name: nix-flake
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-26.05
+      - name: flake lock（首跑生成后入库）
+        run: |
+          test -f flake.lock || { nix flake lock && echo "::notice::flake.lock 已生成——请提交入库"; }
+      - name: nix flake check
+        run: nix flake check --keep-going
+      - name: nix build 四包
+        run: |
+          nix build .#loomos-wamr
+          nix build .#loomos-wamrc
+          nix build .#loomos-components
+          nix build .#loomos-host   # 含 workspace cargo test（Linux 侧验收门）
+
+  wamr-link:
+    # N1/N2 验证：libiwasm.a 真链接编译（wamr-link 档全链路编译门）
+    name: wamr-link-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.99.1"
+      - name: 构建 WAMR（钉死 rev，最小 feature 集）
+        run: |
+          git clone --depth 1 --branch main https://github.com/bytecodealliance/wasm-micro-runtime.git wamr
+          cd wamr && git checkout "$WAMR_REV"
+          mkdir -p build && cd build
+          cmake ../product-mini/platforms/linux \
+            -DWAMR_BUILD_PLATFORM=linux -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1 \
+            -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 -DWAMR_BUILD_WASI=1 \
+            -DWAMR_BUILD_LIBC_WASI=1 -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
+            -DWAMR_BUILD_MULTI_MODULE=0
+          cmake --build . -j
+          test -f libiwasm.a || { find . -name 'libiwasm.a'; exit 1; }
+      - name: wamr-link 档编译 + 测试
+        run: |
+          export IWASM_LIB_DIR="$PWD/wamr/build"
+          cargo test -p loomos-wamr-sys -p loomos-wamr --features loomos-wamr/wamr-link
+        # 注：crate 名以 Cargo.toml 为准（loomos-wamr / loomos-wamr-sys）
+
+  wasm-aot:
+    # N3/N4 验证：wasm32-wasip1 组件构建 + wamrc 产出 aarch64 AOT + 魔数/版本校验
+    name: wasm-components-and-aot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.99.1"
+      - name: rustup target add wasm32-wasip1
+        run: rustup target add wasm32-wasip1
+      - name: 构建 wasm 组件
+        run: cargo build --release -p loomos-nlu-wasm-wrap --target wasm32-wasip1
+      - name: 构建 wamrc
+        run: |
+          sudo apt-get update && sudo apt-get install -y llvm-18-dev libclang-18-dev clang-18
+          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git wamr
+          cd wamr && git checkout "$WAMR_REV"
+          mkdir -p wamrc-build && cd wamrc-build
+          cmake ../tools/wamrc -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
+          cmake --build . -j
+      - name: wamrc → aarch64 AOT + 魔数校验
+        run: |
+          WASM=target/wasm32-wasip1/release/*.wasm
+          wamr/wamrc-build/wamrc --target=aarch64 -o /tmp/nlu.aot $WASM
+          # AOT 头：魔数 \0aot + 格式版本 6（core/config.h @WAMR_REV）
+          python3 -c "
+          b = open('/tmp/nlu.aot','rb').read(8)
+          assert b[:4] == b'\x00\x61\x6f\x74', f'AOT magic mismatch: {b[:4].hex()}'
+          import struct
+          v = struct.unpack('<I', b[4:8])[0]
+          print(f'AOT version={v}')
+          assert v == 6, f'AOT version {v} != 6'
+          "
