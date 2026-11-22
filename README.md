@@ -68,7 +68,8 @@ nix develop                  # 钉死工具链开发环境
 | `crates/loomos-device` | 设备核心（描述符/提供者/Operation 状态机/租约/遥测/故障）+ mock 家居提供者 + 板端 HTTP 适配器（8091/8092/8093 契约） |
 | `crates/loomos-ort-sys` | **声明式可信边界 ②**：onnxruntime 动态加载最小绑定（OrtApi v20 307 槽位，脚本生成） |
 | `crates/loomos-wamr-sys` | **声明式可信边界 ③**：WAMR C API 最小绑定（静态链接 libiwasm.a；stub 档始终可编译）——raw FFI 全仓只在此处 |
-| `crates/loomos-wamr` | **WAMR Runtime Host（ADR-011 v1.1）**：模块真加载/卸载（缓冲同生命周期契约）、实例生命周期（CAS 原子内存预算：预留→提交→回滚→释放）、AOT 兼容键 fail-closed、Host ABI v1（能力校验/属主句柄表/稳定错误码）；`#![forbid(unsafe_code)]` |
+| `crates/loomos-wamr` | **WAMR Runtime Host（ADR-011 v1.1）**：模块真加载/卸载（缓冲同生命周期契约）、实例生命周期（CAS 原子内存预算：预留→提交→回滚→释放）、AOT 兼容键 fail-closed、Host ABI v1（能力校验/属主句柄表/稳定错误码）+ 组件包格式（manifest+sha256 全量验签）；`#![forbid(unsafe_code)]` |
+| `crates/loomos-ab` | **A/B 更新状态机（ADR-013）**：13 步事务（验签→写槽→arm→引导计数→健康检查→确认/回退）、SlotConfirmation 类型级迁移闸门、RAUC 兼容 bundle 清单——§16.4 全矩阵 25 测试自动化 |
 | `crates/loomos-audio` | WAV、重采样（linear 升采样 / decimate3-mavg3 降采样——沿旧板实测选型）、能量门/VAD、KWS/ASR/TTS 档位（默认档 echo/sine 全自检） |
 | `crates/loomos-adapters-sherpa` | **sherpa-onnx 真引擎适配器**：Python API 子进程驱动（Windows/aarch64 同一套命令），实现 ASR/TTS trait；模型缺失时优雅 skip |
 | `crates/loomos-nlu` | 实体/区域注册表、中文规则语法、直连整句表（不做子串）、klar v2 外部引擎适配契约 |
@@ -82,7 +83,7 @@ nix develop                  # 钉死工具链开发环境
 | `deploy/` | 板上部署工件：systemd 非 root 单元 / 看门狗 DT 片段 / install 脚本（未上板验证，上板后回填 EVIDENCE） |
 | `manifests/` | 组件 Manifest（TOML）：voice-pipeline / vision |
 | `fixtures/` · `reports/` | 语音夹具 / 验收报告（由脚本生成，不得手改） |
-| `flake.nix` · `nix/` | **Nix 系统重建（ADR-012）**：钉死 nixpkgs/Rust 1.99.1/WAMR@06f6c8c；loomos-host/wamr/wamrc/components 包；services.loomos NixOS 模块；厂商工件登记（证据等级 Unverified，待 CI） |
+| `flake.nix` · `nix/` | **Nix 系统重建（ADR-012）**：钉死 nixpkgs/Rust 1.99.1/WAMR@06f6c8c；loomos-host/wamr/wamrc/components 包；services.loomos NixOS 模块；nix/images RAUC bundle 组装骨架；厂商工件登记（证据等级 Unverified，待 CI） |
 | `docs/dev/archive/` | 已否决方案的归档（0001：权威迁入 Wasm——错在哪/为何错/被什么取代） |
 
 ## 原型验证矩阵（architecture/08 §8.5 三层）

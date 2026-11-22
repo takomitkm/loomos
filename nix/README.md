@@ -25,6 +25,11 @@ nix/
 │   ├── aarch64-linux.nix     # nixosConfigurations.generic-aarch64
 │   └── fmql30tai676h.nix     # nixosConfigurations.fmql30tai676h（过渡期占位）
 └── vendor/sources.nix        # 厂商工件登记正本（四级分类 + 哈希纪律）
+
+nix/images/                  # A/B 发布工件层（P5；Unverified 板端）
+├── ab-release.nix           # RAUC bundle 组装（manifest.raucs + loomis-ab 清单同源校验和）
+├── rauc-system-conf.nix     # system.conf 模板（bootenv 语义待板端调查）
+└── README.md                # 状态机在 crates/loomis-ab（25 测试）；真实镜像/分区 = P5
 ```
 
 ## 命令

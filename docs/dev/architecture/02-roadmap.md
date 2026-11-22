@@ -142,9 +142,9 @@ flowchart TD
 | N0 | Nix 可复现地基：钉死 flake（nixpkgs/rust 1.99.1/WAMR@06f6c8c）、host/wamr/wamrc/components 包、devShell、checks（fmt+工具链防漂移） | **已交付，Unverified**（本机无 Nix；flake.lock 与 CI 首跑待做） |
 | N1 | WAMR Runtime Host 完成：真加载/实例生命周期/原子内存预算/AOT 兼容键 fail-closed；FFI 集中 loomos-wamr-sys 第三可信边界 | **已交付**（宿主测试全绿；wamr-link 真链路待 CI） |
 | N2 | Host ABI v1：11 接口 loomos.<iface>_v1、稳定错误码、CapabilityChecker、属主句柄表、Guest 内存 validate+复制语义 | **已交付**（stub 档全测；真注册待 CI） |
-| N3 | 业务组件迁移：nlu→home→executor→audio/vision 业务逻辑；组件包格式+checksum；与 native 基线输出等价校验 | 部分（nlu wasm32-wasip1 构建已验证——bench 三形态；其余未开始） |
-| N4 | 多平台：Linux x86_64/AArch64（nix 已布）、Windows/macOS 原生 runner、交叉构建、QEMU aarch64 对比测试 | 未开始（bench 已证 QEMU aarch64 可行） |
-| N5 | NixOS/全 Nix 镜像 + A/B：厂商内核工件接入、RAUC、槽位回退演练、签名发布、Store GC | 未开始（fmql 配置为可评估过渡占位；板端分区不动） |
+| N3 | 业务组件迁移：nlu→home→executor→audio/vision 业务逻辑；组件包格式+checksum；与 native 基线输出等价校验 | **框架已交付**（2026-11-22）：loomisd HostAbiCore 权威桥（能力两层模型+device_op 真链路）；组件包格式（sha256 全量验签）；NLU Guest Host ABI 客户端 + ab_parse_via_host 奇偶导出；home/executor/audio/vision 业务迁移未开始 |
+| N4 | 多平台：Linux x86_64/AArch64（nix 已布）、Windows/macOS 原生 runner、交叉构建、QEMU aarch64 对比测试 | **CI 矩阵已交付**（2026-11-22）：platform.yml 三平台 wamr-matrix（真构建 libiwasm→wamr-link 全测→E2E 真加载）+ parity job（三平台 checksum 比对=自动验收）+ wamrc aarch64 AOT 魔数校验；首次 CI 结果待跑 |
+| N5 | NixOS/全 Nix 镜像 + A/B：厂商内核工件接入、RAUC、槽位回退演练、签名发布、Store GC | **状态机框架已交付**（2026-11-22）：loomis-ab（13 步事务/引导计数回退/迁移纪律类型闸门——§16.4 矩阵 25 测试全绿）+ nix/images RAUC bundle 组装骨架；真实镜像/分区/bootenv = P5 板端调查（Unverified） |
 
 验收纪律：每阶段独立提交+推送；文档声称的实现必须有对应代码与测试；
 板级事实 Unverified 如实标注，不以 QEMU 冒充板测。

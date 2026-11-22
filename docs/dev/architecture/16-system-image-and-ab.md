@@ -52,9 +52,13 @@ Bootloader / U-Boot
 旧镜像完好。板端 bootloader 能力（U-Boot bootenv/bootcount 语义）为
 **Unverified**，调查后补 `platforms/<机型>/` 证据。
 
-## 16.5 本阶段边界
+## 16.5 本阶段边界（2026-11-22 更新）
 
 - **不改板端分区**；不生成真实分区表；
-- RAUC 为优先评估项，替代方案（自实现 updater）需书面评估后再裁定；
-- 签名/分发链的密钥管理（外部供给）与 SBOM（flake.lock + Cargo.lock + WAMR rev
-  + 兼容键）在 P5 随镜像工作展开。
+- RAUC 为优先评估项；bundle 组装骨架已交付（`nix/images/ab-release.nix`，
+  manifest.raucs INI + loomis-ab BundleManifest 同源校验和）；
+- **事务/回滚状态机已全量自动化**：`crates/loomos-ab`（25 测试覆盖 §16.4 全矩阵：
+  中断/篡改/板型/计数耗尽/健康检查失败/迁移纪律/旧镜像完好）；
+- 板端 U-Boot bootenv/bootcount 语义调查（Unverified）→ 证据进 platforms/ 后
+  才产出真实 slot 映射；
+- 签名/分发链的密钥管理（外部供给）与 SBOM 在 P5 随镜像工作展开。
