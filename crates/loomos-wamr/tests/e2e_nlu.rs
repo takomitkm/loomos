@@ -155,9 +155,12 @@ fn e2e_load_invoke_and_host_abi_parity() {
         caps: Box::new(AllowAll),
         handles: Mutex::new(loomos_wamr::host_abi::HandleTable::new()),
     }));
+    eprintln!("[stage] init 前");
     let mut host =
         RuntimeHost::init(RuntimeConfig::default()).expect("运行时初始化失败（含符号注册）");
+    eprintln!("[stage] init 完成（full_init+register）");
     let h = setup(&mut host);
+    eprintln!("[stage] 模块加载+实例化完成");
 
     // 直调路径全集
     let mut direct = Vec::new();
