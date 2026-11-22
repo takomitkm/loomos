@@ -26,11 +26,15 @@ pub mod error;
 pub mod host_abi;
 pub mod instance;
 pub mod module;
+pub mod package;
 pub mod runtime;
+pub mod sha256;
 
 pub use aot_compat::AotCompatKey;
 pub use error::{WamrError, WamrResult};
 pub use host_abi::{HOST_ABI_VERSION, HOST_NAMESPACE};
 pub use instance::{InstanceHandle, InstanceManager, InstanceSpec, Reservation};
 pub use module::{ExecMode, LoadedModule, ModuleFormat, ModuleManager, detect_format};
+pub use package::{ComponentPackage, PackageManifest};
 pub use runtime::{RuntimeConfig, RuntimeHost};
+pub use sha256::sha256_hex;
