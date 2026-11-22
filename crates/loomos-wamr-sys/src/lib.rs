@@ -47,6 +47,9 @@ pub struct NativeSymbol {
     pub symbol: *const c_char,
     pub func_ptr: *mut c_void,
     pub signature: *const c_char,
+    /// attachment（lib_export.h 实证第 4 字段；经 wasm_runtime_get_function_attachment
+    /// 获取。缺失会使整表错位 8 字节——CI SIGSEGV/double-free 实证）
+    pub attachment: *mut c_void,
 }
 
 /// RuntimeInitArgs（wasm_export.h，WAMR main@06f6c8c 逐字段核对）。
@@ -184,6 +187,12 @@ mod raw {
             app_offset: u64,
             size: u64,
         ) -> bool;
+        pub fn wasm_runtime_malloc(size: u32) -> *mut c_void;
+        pub fn wasm_runtime_free(ptr: *mut c_void);
+        pub fn wasm_runtime_malloc(size: u32) -> *mut c_void;
+        pub fn wasm_runtime_free(ptr: *mut c_void);
+        pub fn wasm_runtime_malloc(size: u32) -> *mut c_void;
+        pub fn wasm_runtime_free(ptr: *mut c_void);
         pub fn wasm_runtime_register_natives(
             module_name: *const c_char,
             native_symbols: *mut NativeSymbol,
@@ -488,6 +497,32 @@ pub fn validate_app_addr(
     #[cfg(not(feature = "link"))]
     {
         let _ = (inst, app_offset, size);
+        Err(SysError::NotLinked)
+    }
+}
+
+/// 运行时内存分配（表分配器与 WAMR 一致：destroy 时 wasm_runtime_free 我们的
+/// 表才是合法释放——std 泄漏分配被 free = double free/corruption 实证）。
+pub fn alloc_runtime_bytes(bytes: &[u8]) -> Result<*mut c_void, SysError> {
+    #[cfg(feature = "link")]
+    {
+        // SAFETY: bytes.len() 字节请求（系统分配器档=malloc），内容立即复制，
+        // 配对释放由 WAMR destroy 承担（wasm_runtime_free）。
+        let p = unsafe { raw::wasm_runtime_malloc(bytes.len() as u32) };
+        if p.is_null() {
+            return Err(SysError::InitFailed(format!(
+                "wasm_runtime_malloc({}) 失败",
+                bytes.len()
+            )));
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), p.cast::<u8>(), bytes.len());
+        }
+        Ok(p)
+    }
+    #[cfg(not(feature = "link"))]
+    {
+        let _ = bytes;
         Err(SysError::NotLinked)
     }
 }

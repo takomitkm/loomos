@@ -701,28 +701,33 @@ pub fn leaked_symbol_table() -> WamrResult<(*const c_char, *mut loomos_wamr_sys:
 {
     static BUILT: OnceLock<()> = OnceLock::new();
     if BUILT.set(()).is_err() {
-        // 已构建：直接重用（符号表是 static 的——重建会泄漏第二份）
         return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
             "符号表已构建（内部错误）".into(),
         )));
     }
     let table = build_symbol_table();
-    let mut native: Vec<loomos_wamr_sys::NativeSymbol> = Vec::with_capacity(table.len());
+    let n = table.len() as u32;
+    // 序列化 NativeSymbol 数组的字节布局（repr(C)：4×8 字节/条目，无填充）。
+    // 字段：symbol(8) func_ptr(8) signature(8) attachment(8=null)——第 4 字段
+    // 是 lib_export.h 实证（缺失=整表错位 8 字节，CI SIGSEGV/double-free 实证）。
+    // 符号名/签名字符串 std 泄漏（WAMR 不 free 字符串，只 free 数组本身）。
+    let mut layout: Vec<u8> = Vec::with_capacity(table.len() * 32);
     for (name, sig, addr) in &table {
         let field = name
             .strip_prefix(&format!("{HOST_NAMESPACE}."))
             .unwrap_or(name);
-        native.push(loomos_wamr_sys::NativeSymbol {
-            symbol: leaked_cstr(field),
-            func_ptr: *addr as *mut c_void,
-            signature: leaked_cstr(sig),
-        });
+        layout.extend_from_slice((leaked_cstr(field) as usize).to_ne_bytes().as_slice());
+        layout.extend_from_slice({ *addr }.to_ne_bytes().as_slice());
+        layout.extend_from_slice((leaked_cstr(sig) as usize).to_ne_bytes().as_slice());
+        layout.extend_from_slice(&0usize.to_ne_bytes());
     }
-    let native = Box::leak(native.into_boxed_slice());
+    // 数组用 WAMR 分配器分配——destroy 时 wasm_runtime_free 合法（std 泄漏被
+    // WAMR free = double free/corruption 实证）
+    let arr = loomos_wamr_sys::alloc_runtime_bytes(&layout)?;
     Ok((
         leaked_cstr(HOST_NAMESPACE),
-        native.as_mut_ptr(),
-        native.len() as u32,
+        arr as *mut loomos_wamr_sys::NativeSymbol,
+        n,
     ))
 }
 
@@ -749,6 +754,7 @@ pub fn register_symbols() -> WamrResult<()> {
             symbol: leaked_cstr(field),
             func_ptr: *addr as *mut c_void,
             signature: leaked_cstr(sig),
+            attachment: std::ptr::null_mut(),
         });
     }
     let native = Box::leak(native.into_boxed_slice());
