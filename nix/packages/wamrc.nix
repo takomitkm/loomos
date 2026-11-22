@@ -5,7 +5,7 @@
 #   - 一个 x86_64 构建机的 wamrc 即可为 aarch64 产出 .aot（--target=aarch64）。
 # AOT 兼容键（ADR-011 §4.4：WAMR 版本/构建配置/wamrc 版本/OS/ISA/CPU 基线/ABI/旗标）
 # 由部署层在调用 wamrc 时记录；本 derivation 提供钉死的 wamrc 本体。
-{ lib, stdenv, cmake, llvmPackages_17, wamrSrc }:
+{ lib, stdenv, cmake, llvmPackages_18, wamrSrc }:
 stdenv.mkDerivation {
   pname = "loomos-wamrc";
   version = "2026.11.20"; # 与 wamr.nix 同源同版本
@@ -13,7 +13,7 @@ stdenv.mkDerivation {
   src = wamrSrc;
   sourceRoot = "source/tools/wamrc";
   nativeBuildInputs = [ cmake ];
-  buildInputs = [ llvmPackages_17.llvm ];
+  buildInputs = [ llvmPackages_18.llvm ];
 
   installPhase = ''
     runHook preInstall

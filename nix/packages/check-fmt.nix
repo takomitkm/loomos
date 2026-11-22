@@ -8,6 +8,7 @@ stdenv.mkDerivation {
   doCheck = true;
   checkPhase = ''
     runHook preCheck
+    export CARGO_HOME=$(mktemp -d)  # 沙箱内无 HOME——cargo 需可写 CARGO_HOME
     cargo fmt --all --check
     runHook postCheck
   '';

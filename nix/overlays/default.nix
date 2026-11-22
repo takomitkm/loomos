@@ -10,8 +10,10 @@ final: prev: {
     targets = [ "wasm32-wasip1" ];
     extensions = [ "rust-src" ];
   };
+  # oxalica 工具链 derivation 自含 bin/cargo 与 bin/rustc——整链直接当 cargo/rustc
+  # （rust-bin 结果无 .cargo/.rustc 透传属性——CI 实证）
   loomos-rust-platform = final.makeRustPlatform {
-    cargo = final.loomosRustBuild.cargo;
+    cargo = final.loomosRustBuild;
     rustc = final.loomosRustBuild;
   };
 

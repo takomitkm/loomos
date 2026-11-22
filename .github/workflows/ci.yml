@@ -21,6 +21,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      # rust-toolchain.toml 裸 channel 无组件——显式补（dtolnay targets 输入已知会静默失效）
+      - name: rustup component add（显式）
+        run: rustup component add rustfmt clippy
       - name: fmt
         run: cargo fmt --all --check
       - name: clippy（0 warning 门禁）
@@ -38,6 +41,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
+      - name: rustup target add（显式——targets 输入静默失效教训）
+        run: rustup target add aarch64-unknown-linux-gnu
       - name: aarch64 cargo check
         run: cargo check --workspace --all-targets --target aarch64-unknown-linux-gnu
       - name: aarch64 loomos-sys linux-backend check
