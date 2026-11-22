@@ -551,3 +551,85 @@ fn unsafe_cstr_to_string(p: *const c_char) -> String {
         String::from_utf8_lossy(slice).into_owned()
     }
 }
+
+// ---------------------------------------------------------------------------
+// Guest 内存访问（Host ABI 数据面）——复制语义：native 指针绝不外泄
+// ---------------------------------------------------------------------------
+
+/// 读 Guest 线性内存（复制语义）：先 `validate_app_addr`，再 `addr_app_to_native`，
+/// 复制 `len` 字节返回。native 指针只在本函数内部存在，绝不返回给调用方。
+pub fn read_guest_memory(
+    inst: WasmModuleInst,
+    app_offset: u64,
+    len: u32,
+) -> Result<Vec<u8>, SysError> {
+    if len == 0 {
+        return Ok(Vec::new()); // 0 长读取无副作用，两档一致
+    }
+    #[cfg(feature = "link")]
+    {
+        // SAFETY(块内): inst 来自 instantiate；两步 WAMR 调用按官方顺序组合——
+        // validate_app_addr 通过后，addr_app_to_native 的指针在实例存活期内
+        // 对 [offset, offset+len) 有效（WAMR 契约），随后立即复制并丢弃指针。
+        let ok = unsafe { raw::wasm_runtime_validate_app_addr(inst, app_offset, len as u64) };
+        if !ok {
+            return Err(SysError::LoadFailed(format!(
+                "guest 内存越界: offset {app_offset} len {len}"
+            )));
+        }
+        let native = unsafe { raw::wasm_runtime_addr_app_to_native(inst, app_offset) };
+        if native.is_null() {
+            return Err(SysError::LoadFailed(format!(
+                "guest 地址映射失败: offset {app_offset}"
+            )));
+        }
+        // SAFETY: 有效性由上方 validate+map 组合保证（WAMR 契约），立即复制。
+        let bytes = unsafe { std::slice::from_raw_parts(native.cast::<u8>(), len as usize) };
+        Ok(bytes.to_vec())
+    }
+    #[cfg(not(feature = "link"))]
+    {
+        let _ = (inst, app_offset, len);
+        Err(SysError::NotLinked)
+    }
+}
+
+/// 写 Guest 线性内存（复制语义）：校验后复制 `bytes` 到 Guest 内存。
+pub fn write_guest_memory(
+    inst: WasmModuleInst,
+    app_offset: u64,
+    bytes: &[u8],
+) -> Result<(), SysError> {
+    #[cfg(feature = "link")]
+    {
+        if bytes.is_empty() {
+            return Ok(());
+        }
+        // SAFETY(块内): 与 read_guest_memory 相同的 validate+map 组合契约；
+        // 拿到 native 指针后立即写入并丢弃指针，不跨调用保留。
+        let ok =
+            unsafe { raw::wasm_runtime_validate_app_addr(inst, app_offset, bytes.len() as u64) };
+        if !ok {
+            return Err(SysError::LoadFailed(format!(
+                "guest 内存越界: offset {app_offset} len {}",
+                bytes.len()
+            )));
+        }
+        let native = unsafe { raw::wasm_runtime_addr_app_to_native(inst, app_offset) };
+        if native.is_null() {
+            return Err(SysError::LoadFailed(format!(
+                "guest 地址映射失败: offset {app_offset}"
+            )));
+        }
+        // SAFETY: 同上；写入范围恰为 bytes.len()。
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), native.cast::<u8>(), bytes.len());
+        }
+        Ok(())
+    }
+    #[cfg(not(feature = "link"))]
+    {
+        let _ = (inst, app_offset, bytes);
+        Err(SysError::NotLinked)
+    }
+}

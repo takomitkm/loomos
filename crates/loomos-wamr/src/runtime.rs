@@ -175,6 +175,9 @@ impl RuntimeHost {
     ) -> WamrResult<InstanceHandle> {
         self.require_active()?;
         spec.module_name = module_name.to_string();
+        if spec.component_id.is_empty() {
+            spec.component_id = module_name.to_string();
+        }
         if spec.stack_size == 0 {
             spec.stack_size = self.cfg.stack_size;
         }
@@ -241,7 +244,10 @@ impl RuntimeHost {
                 .ok_or_else(|| WamrError::NoSuchInstance(format!("inst-{}", handle.0)))?;
             let function = sys::lookup_function(inst, func)?;
             let env = sys::create_exec_env(inst, spec.stack_size)?;
+            // Host ABI 调用上下文：Guest 调用期内可识别调用方组件（ADR-011 §6.3）
+            crate::host_abi::enter_call(&spec.component_id, inst);
             let result = sys::call_wasm(env, function, argv);
+            crate::host_abi::exit_call();
             let _ = sys::destroy_exec_env(env); // 执行环境无论成败都销毁
             if let Err(e) = result {
                 // 异常文本优先（比 call_wasm=false 更可诊断）
@@ -359,6 +365,7 @@ mod tests {
                 "nope",
                 InstanceSpec {
                     module_name: "nope".into(),
+                    component_id: "nope".into(),
                     stack_size: 0,
                     heap_size: 0,
                     memory_limit: 64
@@ -404,6 +411,7 @@ mod tests {
             "nlu",
             InstanceSpec {
                 module_name: "nlu".into(),
+                component_id: "nlu".into(),
                 stack_size: 0,
                 heap_size: 0,
                 memory_limit: 64,

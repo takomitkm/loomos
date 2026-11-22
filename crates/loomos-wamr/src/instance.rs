@@ -15,6 +15,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[derive(Debug, Clone)]
 pub struct InstanceSpec {
     pub module_name: String,
+    /// 调用方组件身份（Host ABI 能力校验的主体；空 = 实例化时取模块名）。
+    pub component_id: String,
     /// 实例执行栈大小（字节）。
     pub stack_size: u32,
     /// WAMR 应用堆大小（字节；0 = Rust 模块自管线性内存，bench 实测约定）。
@@ -179,6 +181,7 @@ mod tests {
     fn spec(mem: u64) -> InstanceSpec {
         InstanceSpec {
             module_name: "nlu".into(),
+            component_id: "nlu".into(),
             stack_size: 64 * 1024,
             heap_size: 0,
             memory_limit: mem,
