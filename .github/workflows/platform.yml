@@ -110,7 +110,7 @@ jobs:
           test -f "$LOOMOS_E2E_WASM" || { echo "wasm 缺失"; ls target/wasm32-wasip1/release/; exit 1; }
           BT=$(ls target/debug/deps/e2e_nlu-* | grep -v '\.d$' | head -1)
           echo "== valgrind（定位非法写）=="
-          valgrind --error-exitcode=0 --track-origins=yes "$BT" --test-threads=1 --nocapture 2>&1 | grep -E "Invalid write|Invalid read|by 0x|at 0x|.Corrupted|loomos_wamr|e2e_nlu|wasm_runtime|wasm_native" | head -60
+          valgrind --error-exitcode=0 --track-origins=yes "$BT" --test-threads=1 --nocapture 2>&1 | grep -E "Invalid|Address 0x|block of size|by 0x|at 0x|Corrupted|loomos_wamr|e2e_nlu|wasm_runtime|wasm_native" | head -80
           echo "== gdb（复现回溯）=="
           gdb -batch -ex run -ex bt --args "$BT" --test-threads=1 --nocapture 2>&1 | tail -45
       - name: 提取奇偶校验和

@@ -536,7 +536,10 @@ pub fn register_host_natives(
         let mut tmp = symbols.to_vec();
         // SAFETY: tmp 为 repr(C) 数组副本，指针由 wasm_runtime_malloc 分配
         // （destroy 时由 wasm_runtime_free 配对释放），内容立即写入并注册。
-        let arr = unsafe { raw::wasm_runtime_malloc(tmp.len() as u32) };
+        // +64 余量：WAMR wasm_runtime_malloc 的 size 语义存疑（CI valgrind 实证
+        // malloc(352) 后 352 字节拷贝越界 24——疑似内部头扣除），余量吸收。
+        // 数组本体前 N 字节语义不变；free 由 WAMR destroy 配对。
+        let arr = unsafe { raw::wasm_runtime_malloc(tmp.len() as u32 + 64) };
         if arr.is_null() {
             return Err(SysError::InitFailed("wasm_runtime_malloc 失败".into()));
         }
