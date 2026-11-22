@@ -84,6 +84,12 @@ impl RuntimeHost {
                 RUNNING.store(false, Ordering::SeqCst);
                 return Err(e.into());
             }
+            // Host ABI 符号注册（full_init 之后、load/instantiate 之前；
+            // 提前注册会被 WAMR 拒绝——CI E2E 实证）
+            if let Err(e) = crate::host_abi::register_symbols() {
+                RUNNING.store(false, Ordering::SeqCst);
+                return Err(e);
+            }
         }
         tracing::info!(
             linked = sys::linked(),

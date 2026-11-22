@@ -155,9 +155,8 @@ fn e2e_load_invoke_and_host_abi_parity() {
         caps: Box::new(AllowAll),
         handles: Mutex::new(loomos_wamr::host_abi::HandleTable::new()),
     }));
-    loomos_wamr::host_abi::register_symbols().expect("符号注册失败");
-
-    let mut host = RuntimeHost::init(RuntimeConfig::default()).expect("运行时初始化失败");
+    let mut host =
+        RuntimeHost::init(RuntimeConfig::default()).expect("运行时初始化失败（含符号注册）");
     let h = setup(&mut host);
 
     // 直调路径全集

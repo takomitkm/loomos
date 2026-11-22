@@ -697,7 +697,9 @@ fn build_symbol_table() -> Vec<(String, String, usize)> {
 /// stub 档 → Err(NotLinked)。注册一次；重复注册幂等返回 Ok。
 pub fn register_symbols() -> WamrResult<()> {
     static REGISTERED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if REGISTERED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+    // 注意：注册依赖运行时已初始化（wasm_runtime_register_natives 在 full_init 前
+    // 返回 false——CI E2E 实证）。失败不闩锁，允许 init 后重试。
+    if REGISTERED.load(std::sync::atomic::Ordering::SeqCst) {
         return Ok(());
     }
     let table = build_symbol_table();

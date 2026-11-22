@@ -85,11 +85,8 @@ impl GuestAbiBridge {
             caps: Box::new(AssemblyChecker),
             handles: Mutex::new(HandleTable::new()),
         }));
-        // 符号注册：wamr-link 档注册进 WAMR；stub 档无运行时（debug 记录，不视为错误）
-        match loomos_wamr::host_abi::register_symbols() {
-            Ok(()) => tracing::info!("Host ABI 符号已注册（loomos 命名空间）"),
-            Err(e) => tracing::debug!(error = %e, "Host ABI 符号注册跳过（WAMR 未链接/stub 档）"),
-        }
+        // 符号注册在 RuntimeHost::init（full_init 之后）执行——提前注册被 WAMR
+        // 拒绝（register_natives 返回 false，CI E2E 实证）
     }
 
     fn new(system: Arc<System>) -> Self {
