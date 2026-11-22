@@ -1,0 +1,14 @@
+[package]
+name = "loomos-wamr-sys"
+version.workspace = true
+edition.workspace = true
+description = "WAMR C API 最小 unsafe 绑定（静态链接 libiwasm.a）——Wasm 执行的可信边界（第三声明式边界，与 loomos-sys / loomos-ort-sys 同地位）"
+
+[dependencies]
+thiserror = { workspace = true }
+
+[features]
+default = []
+# 静态链接 libiwasm.a：需 IWASM_LIB_DIR 指向包含 libiwasm.a 的目录。
+# 未启用时全部包装函数返回 SysError::NotLinked——crate 始终可编译（stub 档）。
+link = []

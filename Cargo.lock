@@ -268,9 +268,18 @@ dependencies = [
 name = "loomos-wamr"
 version = "0.1.0"
 dependencies = [
+ "loomos-wamr-sys",
  "serde",
+ "serde_json",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "loomos-wamr-sys"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]

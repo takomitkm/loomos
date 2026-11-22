@@ -1,6 +1,6 @@
-//! loomooms-ort-sys：onnxruntime.dll 的最小 unsafe 绑定（LoadLibrary 动态加载）。
+//! loomos-ort-sys：onnxruntime.dll 的最小 unsafe 绑定（LoadLibrary 动态加载）。
 //!
-//! **全仓第二个声明式可信边界 crate**（与 loomooms-sys 同地位；其余 crate
+//! **全仓第二个声明式可信边界 crate**（与 loomos-sys 同地位；其余 crate
 //! `#![forbid(unsafe_code)]`）。只暴露 vision 引擎需要的最小面：
 //! env/session/options/内存信息/张量创建/Run/形状查询/错误消息。
 //!

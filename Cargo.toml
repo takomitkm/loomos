@@ -12,7 +12,8 @@ members = [
     "crates/loomos-home",
     "crates/loomos-executor",
     "crates/loomos-vision",
-    "crates/loomooms-wamr",
+    "crates/loomos-wamr-sys",
+    "crates/loomos-wamr",
     "crates/loomosd",
     "crates/loomos-cli",
     "crates/loomos-nlu-wasm-wrap",
@@ -44,7 +45,8 @@ loomos-adapters-sherpa = { path = "crates/loomos-adapters-sherpa" }
 loomos-nlu = { path = "crates/loomos-nlu" }
 loomos-home = { path = "crates/loomos-home" }
 loomos-vision = { path = "crates/loomos-vision" }
-loomooms-wamr = { path = "crates/loomooms-wamr" }
+loomos-wamr = { path = "crates/loomos-wamr" }
+loomos-wamr-sys = { path = "crates/loomos-wamr-sys" }
 loomos-executor = { path = "crates/loomos-executor" }
 
 

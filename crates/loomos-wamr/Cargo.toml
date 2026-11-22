@@ -1,0 +1,17 @@
+[package]
+name = "loomos-wamr"
+version.workspace = true
+edition.workspace = true
+description = "WAMR Runtime Host（P1，ADR-011 v1.1）：Wasm/AOT 模块真加载/卸载、实例生命周期、内存预算原子记账、AOT 兼容键校验、Host ABI 注册"
+
+[dependencies]
+loomos-wamr-sys = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = []
+# WAMR C API 静态链接（透传给 loomos-wamr-sys/link；需 IWASM_LIB_DIR）
+wamr-link = ["loomos-wamr-sys/link"]
