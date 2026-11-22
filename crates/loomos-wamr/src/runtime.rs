@@ -181,10 +181,12 @@ impl RuntimeHost {
         if spec.stack_size == 0 {
             spec.stack_size = self.cfg.stack_size;
         }
-        let _module = self
+        let module = self
             .modules
             .get(module_name)
             .ok_or_else(|| WamrError::NoSuchModule(module_name.into()))?;
+        #[cfg(not(feature = "wamr-link"))]
+        let _ = module; // stub 档：模块存在性检查即用途
 
         let reservation: Reservation = self.instances.try_admit(&spec)?;
         #[cfg(feature = "wamr-link")]
@@ -274,7 +276,7 @@ impl RuntimeHost {
                 .raw_insts
                 .get(&handle.0)
                 .ok_or_else(|| WamrError::NoSuchInstance(format!("inst-{}", handle.0)))?;
-            sys::get_exception(inst)
+            sys::get_exception(inst).map_err(WamrError::from)
         }
         #[cfg(not(feature = "wamr-link"))]
         {
@@ -297,7 +299,7 @@ impl RuntimeHost {
                 .raw_insts
                 .get(&handle.0)
                 .ok_or_else(|| WamrError::NoSuchInstance(format!("inst-{}", handle.0)))?;
-            sys::validate_app_addr(inst, offset, size)
+            sys::validate_app_addr(inst, offset, size).map_err(WamrError::from)
         }
         #[cfg(not(feature = "wamr-link"))]
         {

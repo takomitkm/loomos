@@ -182,9 +182,10 @@ impl ModuleManager {
             .modules
             .remove(name)
             .ok_or_else(|| WamrError::NoSuchModule(name.into()))?;
-        let _ = &module_removed;
         #[cfg(feature = "wamr-link")]
-        loomos_wamr_sys::unload(module.handle())?;
+        loomos_wamr_sys::unload(module_removed.handle())?;
+        #[cfg(not(feature = "wamr-link"))]
+        let _ = &module_removed; // stub 档：缓冲随 LoadedModule 释放即完成卸载
         // 缓冲随 LoadedModule 释放（与模块同生命周期契约）
         tracing::info!(name, "WAMR module unloaded");
         Ok(())

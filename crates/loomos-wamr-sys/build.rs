@@ -15,6 +15,17 @@ fn main() {
         Ok(dir) if !dir.is_empty() => {
             println!("cargo:rustc-link-search=native={dir}");
             println!("cargo:rustc-link-lib=static=iwasm");
+            // Windows：WAMR win_file.c 引用 PathCchCombine。
+            // - msvc 工具链：链接系统导入库 shlwapi.lib（标准路径）；
+            // - windows-gnu（rustup self-contained 无 shlwapi 导入库——dlltool 缺链家族问题）：
+            //   本机验证走 RUSTFLAGS 直接喂 DLL：
+            //   RUSTFLAGS='-C link-arg=C:\Windows\System32\shlwapi.dll'
+            //   （GNU ld 可直接以 PE DLL 为输入；CI Linux 不需要此处理）
+            if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+                && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc")
+            {
+                println!("cargo:rustc-link-lib=dylib=shlwapi");
+            }
         }
         _ => {
             println!(

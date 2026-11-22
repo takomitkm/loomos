@@ -133,7 +133,7 @@ mod raw {
     };
 
     #[link(name = "iwasm")]
-    extern "C" {
+    unsafe extern "C" {
         pub fn wasm_runtime_full_init(init_args: *mut RuntimeInitArgs) -> bool;
         pub fn wasm_runtime_destroy();
         pub fn wasm_runtime_load(
@@ -360,10 +360,11 @@ pub fn lookup_function(inst: WasmModuleInst, name: &str) -> Result<WasmFunction,
     {
         let name = cstr(name)?;
         // SAFETY: inst 来自 instantiate；name 以 NUL 结尾且在调用期间有效。
-        let func = unsafe { raw::wasm_runtime_lookup_function(inst, name.as_ptr()) };
+        let func =
+            unsafe { raw::wasm_runtime_lookup_function(inst, name.as_ptr() as *const c_char) };
         if func.is_null() {
             Err(SysError::FunctionNotFound(
-                name.to_string_lossy().into_owned(),
+                String::from_utf8_lossy(&name).into_owned(),
             ))
         } else {
             Ok(func)
