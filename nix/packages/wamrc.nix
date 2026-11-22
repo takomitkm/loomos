@@ -12,6 +12,11 @@ stdenv.mkDerivation {
 
   src = wamrSrc;
   sourceRoot = "source/tools/wamrc";
+  # WAMR build-scripts/version.cmake 写源码树（core/version.h，在 sourceRoot 之外）——
+  # postPatch 覆盖不到，postUnpack 放开整树（CI -L 实证 Permission denied）
+  postUnpack = ''
+    chmod -R u+w source
+  '';
   nativeBuildInputs = [ cmake ];
   buildInputs = [ llvmPackages_18.llvm ];
 

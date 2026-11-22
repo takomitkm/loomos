@@ -12,6 +12,13 @@ loomos-rust-platform.buildRustPackage {
   # 默认 feature：全部 wamr/ort 真引擎档关闭——stub 档自包含可编译（IWASM_LIB_DIR 不需要）。
   # 生产档（wamr-link）由 loomos-wamr 产物链接，接入在 P1 收尾后切换。
   doCheck = true;
+  # 显式 debug 档：buffer typestate 的 panic 门（#[cfg(debug_assertions)]）在
+  # release 下不触发——nix 默认 cargo test 走 release 会假绿（CI 实证）。
+  checkPhase = ''
+    runHook preCheck
+    cargo test --locked --workspace
+    runHook postCheck
+  '';
 
   meta = with lib; {
     description = "loomos Native Host：loomosd（系统装配）+ loomos-cli（验收/烟囱工具）";

@@ -703,15 +703,26 @@ pub fn register_symbols() -> WamrResult<()> {
     let table = build_symbol_table();
     let mut native: Vec<loomos_wamr_sys::NativeSymbol> = Vec::with_capacity(table.len());
     for (name, sig, addr) in &table {
+        // WAMR 按 module(命名空间)+field(函数名) 分离解析——module_name 已是
+        // "loomos"，符号字段必须是裸函数名（log_v1）。带前缀注册 = unlinked
+        // import（CI E2E 实证 'failed to call unlinked import function'）。
+        let field = name
+            .strip_prefix(&format!("{HOST_NAMESPACE}."))
+            .unwrap_or(name);
         native.push(loomos_wamr_sys::NativeSymbol {
-            symbol: leaked_cstr(&format!("{HOST_NAMESPACE}.{name}")),
+            symbol: leaked_cstr(field),
             func_ptr: *addr as *mut c_void,
             signature: leaked_cstr(sig),
         });
     }
     let native = Box::leak(native.into_boxed_slice());
-    loomos_wamr_sys::register_natives(leaked_cstr(HOST_NAMESPACE), native)
+    let ok = loomos_wamr_sys::register_natives(leaked_cstr(HOST_NAMESPACE), native)
         .map_err(WamrError::from)?;
+    if !ok {
+        return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
+            "register_natives 返回 false".into(),
+        )));
+    }
     Ok(())
 }
 
