@@ -138,8 +138,13 @@ jobs:
       - name: 构建 wamrc
         run: |
           sudo apt-get update && sudo apt-get install -y llvm-18-dev libclang-18-dev clang-18
-          git clone --no-checkout https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
-          cd wamr-src && git fetch --depth 1 origin "$WAMR_REV" && git checkout FETCH_HEAD
+          rm -rf wamr-src
+          git init -q wamr-src
+          cd wamr-src
+          git remote add origin https://github.com/bytecodealliance/wasm-micro-runtime.git
+          git fetch -q --depth 1 origin "$WAMR_REV"
+          git checkout -q -f FETCH_HEAD
+          test -d tools/wamrc || { echo "wamrc 目录缺失"; ls; exit 1; }
           cmake -S tools/wamrc -B wamrc-build -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
           cmake --build wamrc-build -j
       - name: wamrc → aarch64 AOT + 魔数校验
