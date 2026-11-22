@@ -189,10 +189,6 @@ mod raw {
         ) -> bool;
         pub fn wasm_runtime_malloc(size: u32) -> *mut c_void;
         pub fn wasm_runtime_free(ptr: *mut c_void);
-        pub fn wasm_runtime_malloc(size: u32) -> *mut c_void;
-        pub fn wasm_runtime_free(ptr: *mut c_void);
-        pub fn wasm_runtime_malloc(size: u32) -> *mut c_void;
-        pub fn wasm_runtime_free(ptr: *mut c_void);
         pub fn wasm_runtime_register_natives(
             module_name: *const c_char,
             native_symbols: *mut NativeSymbol,
