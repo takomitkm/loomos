@@ -107,7 +107,7 @@ jobs:
         run: |
           sudo apt-get install -y gdb
           BT=$(ls target/debug/deps/e2e_nlu-* | grep -v '\.d$' | head -1)
-          gdb -batch -ex run -ex bt --args "$BT" --test-threads=1 --nocapture 2>&1 | tail -40
+          LOOMOS_E2E_WASM="$GITHUB_WORKSPACE/target/wasm32-wasip1/release/loomos_nlu_wasm_wrap.wasm"             gdb -batch -ex "set env LOOMOS_E2E_WASM=$LOOMOS_E2E_WASM" -ex run -ex bt             --args "$BT" --test-threads=1 --nocapture 2>&1 | tail -50
       - name: 提取奇偶校验和
         shell: bash
         run: |
