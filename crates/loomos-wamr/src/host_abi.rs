@@ -736,9 +736,9 @@ pub fn register_runtime_natives() -> WamrResult<()> {
     let native = Box::leak(native.into_boxed_slice());
     let credentials = leaked_cstr(HOST_NAMESPACE);
     let ok =
-        loomis_wamr_sys::register_natives_checked(credentials, native).map_err(WamrError::from)?;
+        loomos_wamr_sys::register_natives_checked(credentials, native).map_err(WamrError::from)?;
     if !ok {
-        return Err(WamrError::Sys(loomis_wamr_sys::SysError::InitFailed(
+        return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
             "register_natives 返回 false".into(),
         )));
     }
