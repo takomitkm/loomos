@@ -66,7 +66,9 @@ static E2E_LOCK: Mutex<()> = Mutex::new(());
 
 fn setup(host: &mut RuntimeHost) -> loomos_wamr::InstanceHandle {
     let path = wasm_path().expect("LOOMOS_E2E_WASM 未设置");
+    eprintln!("[stage] load 前");
     host.load_module("nlu", &path).expect("模块加载失败");
+    eprintln!("[stage] load 完成（wasm_runtime_load）");
     host.instantiate(
         "nlu",
         InstanceSpec {
