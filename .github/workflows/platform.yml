@@ -1,8 +1,13 @@
 # platform.yml — Nix/Wasm/WAMR 平台化 CI（ADR-011 v1.1 / ADR-012，architecture/02 §2.5 N0–N4）
 #
-# 与 ci.yml（Host/Cross）互补：本工作流验证 Nix 钉死构建、WAMR 真链接、
-# wasm 组件构建与 wamrc AOT 产物。
-# 注意：Windows/macOS WAMR 构建用原生 runner（N4，另行追加）；本文件不含板测。
+# 职责：
+# - nix job：钉死 flake 评估 + 四包构建（N0 验收）
+# - wamr-matrix job：Linux/Windows/macOS 三平台真链接 libiwasm + 真加载 NLU 组件
+#   + Host ABI 通道 E2E（N1/N2/N4 验证；奇偶校验和跨平台比对）
+# - parity job：聚合三平台 checksum 工件，验证同一 wasm 组件行为一致（N4 验收）
+# - wasm-aot job：wamrc 产出 aarch64 AOT + 魔数/版本校验
+#
+# 板测不在 CI（高风险 L2/L3 不进无人值守——AGENTS.md）。
 
 name: platform
 
@@ -13,12 +18,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # WAMR 源码钉死（与 flake.nix wamr-src 一致；升级两处同步改）
   WAMR_REV: 06f6c8c6e64e75eee6b8a3ce06ac2c7d10d015bf
 
 jobs:
   nix:
-    # N0 验收：钉死 flake 评估 + 四包构建（loomos-host 含全仓 cargo test）+ 防漂移
     name: nix-flake
     runs-on: ubuntu-latest
     steps:
@@ -38,35 +41,84 @@ jobs:
           nix build .#loomos-components
           nix build .#loomos-host   # 含 workspace cargo test（Linux 侧验收门）
 
-  wamr-link:
-    # N1/N2 验证：libiwasm.a 真链接编译（wamr-link 档全链路编译门）
-    name: wamr-link-build
-    runs-on: ubuntu-latest
+  wamr-matrix:
+    # 三平台：真构建 libiwasm → wamr-link 档全测 → E2E 真加载 NLU 组件 → checksum 上传
+    name: wamr-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.99.1"
-      - name: 构建 WAMR（钉死 rev，最小 feature 集）
+      - name: rustup target add wasm32-wasip1
+        run: rustup target add wasm32-wasip1
+      - name: 构建 NLU wasm 组件（canonical .wasm——三平台同一产物）
+        run: cargo build --release -p loomis-nlu-wasm-wrap --target wasm32-wasip1
+      - name: 构建 WAMR（钉死 rev，最小 feature 集，平台各自产物）
+        shell: bash
         run: |
-          git clone --depth 1 --branch main https://github.com/bytecodealliance/wasm-micro-runtime.git wamr
-          cd wamr && git checkout "$WAMR_REV"
-          mkdir -p build && cd build
-          cmake ../product-mini/platforms/linux \
-            -DWAMR_BUILD_PLATFORM=linux -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1 \
-            -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 -DWAMR_BUILD_WASI=1 \
-            -DWAMR_BUILD_LIBC_WASI=1 -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
+          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
+          cd wamr-src && git checkout "$WAMR_REV"
+          case "${{ matrix.os }}" in
+            ubuntu-latest) PLAT=linux ;;
+            windows-latest) PLAT=windows ;;
+            macos-latest) PLAT=darwin ;;
+          esac
+          cmake -S "product-mini/platforms/$PLAT" -B build \
+            -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1 \
+            -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
+            -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1 \
+            -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
             -DWAMR_BUILD_MULTI_MODULE=0
-          cmake --build . -j
-          test -f libiwasm.a || { find . -name 'libiwasm.a'; exit 1; }
-      - name: wamr-link 档编译 + 测试
+          cmake --build build --config Release
+      - name: 定位 libiwasm 静态库
+        id: lib
+        shell: bash
         run: |
-          export IWASM_LIB_DIR="$PWD/wamr/build"
-          cargo test -p loomos-wamr-sys -p loomos-wamr --features loomos-wamr/wamr-link
-        # 注：crate 名以 Cargo.toml 为准（loomos-wamr / loomos-wamr-sys）
+          LIB=$(find wamr-src/build -name 'libiwasm.a' -o -name 'iwasm.lib' | head -1)
+          test -n "$LIB" || { echo "未找到 libiwasm"; exit 1; }
+          echo "dir=$(dirname "$LIB")" >> "$GITHUB_OUTPUT"
+      - name: wamr-link 档全测 + E2E（真加载/Host ABI 奇偶）
+        shell: bash
+        env:
+          IWASM_LIB_DIR: ${{ steps.lib.outputs.dir }}
+          LOOMOS_E2E_WASM: ${{ github.workspace }}/target/wasm32-wasip1/release/loomos_nlu_wasm_wrap.wasm
+        run: cargo test -p loomis-wamr -p loomis-wamr-sys --features loomis-wamr/wamr-link
+      - name: 提取奇偶校验和
+        shell: bash
+        run: |
+          cargo test -p loomis-wamr --features loomis-wamr/wamr-link --test e2e_nlu -- --nocapture \
+            | grep "E2E PARITY CHECKSUM" | tee parity-${{ matrix.os }}.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: parity-${{ matrix.os }}
+          path: parity-${{ matrix.os }}.txt
+
+  parity:
+    # N4 验收：同一 canonical .wasm 在三平台输出校验和一致
+    name: cross-platform-parity
+    needs: wamr-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: 三平台校验和比对
+        shell: bash
+        run: |
+          set -e
+          U=$(grep -o '[0-9a-f]\{16\}' parity-ubuntu-latest/parity-ubuntu-latest.txt)
+          W=$(grep -o '[0-9a-f]\{16\}' parity-windows-latest/parity-windows-latest.txt)
+          M=$(grep -o '[0-9a-f]\{16\}' parity-macos-latest/parity-macos-latest.txt)
+          echo "ubuntu=$U windows=$W macos=$M"
+          test "$U" = "$W" && test "$U" = "$M" \
+            || { echo "奇偶校验失败：跨平台输出不一致"; exit 1; }
+          echo "OK: 同一 .wasm 组件三平台输出逐字节一致"
 
   wasm-aot:
-    # N3/N4 验证：wasm32-wasip1 组件构建 + wamrc 产出 aarch64 AOT + 魔数/版本校验
+    # N3/N4：wamrc 产出 aarch64 AOT + 魔数/版本头校验
     name: wasm-components-and-aot
     runs-on: ubuntu-latest
     steps:
@@ -77,24 +129,22 @@ jobs:
       - name: rustup target add wasm32-wasip1
         run: rustup target add wasm32-wasip1
       - name: 构建 wasm 组件
-        run: cargo build --release -p loomos-nlu-wasm-wrap --target wasm32-wasip1
+        run: cargo build --release -p loomis-nlu-wasm-wrap --target wasm32-wasip1
       - name: 构建 wamrc
         run: |
           sudo apt-get update && sudo apt-get install -y llvm-18-dev libclang-18-dev clang-18
-          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git wamr
-          cd wamr && git checkout "$WAMR_REV"
-          mkdir -p wamrc-build && cd wamrc-build
-          cmake ../tools/wamrc -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
-          cmake --build . -j
+          git clone --depth 1 https://github.com/bytecodealliance/wasm-micro-runtime.git wamr-src
+          cd wamr-src && git checkout "$WAMR_REV"
+          cmake -S tools/wamrc -B wamrc-build -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
+          cmake --build wamrc-build -j
       - name: wamrc → aarch64 AOT + 魔数校验
         run: |
           WASM=target/wasm32-wasip1/release/*.wasm
-          wamr/wamrc-build/wamrc --target=aarch64 -o /tmp/nlu.aot $WASM
-          # AOT 头：魔数 \0aot + 格式版本 6（core/config.h @WAMR_REV）
+          wamr-src/wamrc-build/wamrc --target=aarch64 -o /tmp/nlu.aot $WASM
           python3 -c "
+          import struct
           b = open('/tmp/nlu.aot','rb').read(8)
           assert b[:4] == b'\x00\x61\x6f\x74', f'AOT magic mismatch: {b[:4].hex()}'
-          import struct
           v = struct.unpack('<I', b[4:8])[0]
           print(f'AOT version={v}')
           assert v == 6, f'AOT version {v} != 6'

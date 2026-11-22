@@ -190,11 +190,20 @@ impl RuntimeHost {
 
         let reservation: Reservation = self.instances.try_admit(&spec)?;
         #[cfg(feature = "wamr-link")]
-        let inst = match sys::instantiate(module.handle(), spec.stack_size, spec.heap_size) {
-            Ok(inst) => inst,
-            Err(e) => {
-                self.instances.rollback(reservation);
-                return Err(e.into());
+        let inst = {
+            // WASI P1 参数绑定（load 后、instantiate 前；bench 实测约定）。
+            // argv[0] = 组件名；Guest std 的 WASI 导入依赖此项。
+            const ARGV0: &[u8] = b"loomos\0";
+            sys::set_wasi_args(
+                module.handle(),
+                &[ARGV0.as_ptr() as *const std::ffi::c_char],
+            );
+            match sys::instantiate(module.handle(), spec.stack_size, spec.heap_size) {
+                Ok(inst) => inst,
+                Err(e) => {
+                    self.instances.rollback(reservation);
+                    return Err(e.into());
+                }
             }
         };
         let handle = self.instances.commit(reservation, spec);
@@ -281,6 +290,52 @@ impl RuntimeHost {
         #[cfg(not(feature = "wamr-link"))]
         {
             let _ = handle;
+            Err(WamrError::NotLinked)
+        }
+    }
+
+    /// 读 Guest 线性内存（复制语义；native 指针不外泄）。
+    pub fn read_guest_memory(
+        &self,
+        handle: InstanceHandle,
+        offset: u64,
+        len: u32,
+    ) -> WamrResult<Vec<u8>> {
+        self.require_active()?;
+        #[cfg(feature = "wamr-link")]
+        {
+            let inst = *self
+                .raw_insts
+                .get(&handle.0)
+                .ok_or_else(|| WamrError::NoSuchInstance(format!("inst-{}", handle.0)))?;
+            sys::read_guest_memory(inst, offset, len).map_err(WamrError::from)
+        }
+        #[cfg(not(feature = "wamr-link"))]
+        {
+            let _ = (handle, offset, len);
+            Err(WamrError::NotLinked)
+        }
+    }
+
+    /// 写 Guest 线性内存（复制语义；校验+写一步完成）。
+    pub fn write_guest_memory(
+        &self,
+        handle: InstanceHandle,
+        offset: u64,
+        bytes: &[u8],
+    ) -> WamrResult<()> {
+        self.require_active()?;
+        #[cfg(feature = "wamr-link")]
+        {
+            let inst = *self
+                .raw_insts
+                .get(&handle.0)
+                .ok_or_else(|| WamrError::NoSuchInstance(format!("inst-{}", handle.0)))?;
+            sys::write_guest_memory(inst, offset, bytes).map_err(WamrError::from)
+        }
+        #[cfg(not(feature = "wamr-link"))]
+        {
+            let _ = (handle, offset, bytes);
             Err(WamrError::NotLinked)
         }
     }
