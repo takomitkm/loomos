@@ -92,7 +92,7 @@ jobs:
         id: lib
         shell: bash
         run: |
-          LIB=$(find wamr-src/build -name 'libiwasm.a' -o -name 'iwasm.lib' | head -1)
+          LIB=$(find wamr-src/build \( -name 'libiwasm.a' -o -name 'libiwasm.lib' -o -name 'iwasm.lib' \) | head -1)  # MSVC 产出 libiwasm.lib（CI 实证）
           test -n "$LIB" || { echo "未找到 libiwasm"; exit 1; }
           echo "dir=$(dirname "$LIB")" >> "$GITHUB_OUTPUT"
       - name: wamr-link 档全测 + E2E（真加载/Host ABI 奇偶）
