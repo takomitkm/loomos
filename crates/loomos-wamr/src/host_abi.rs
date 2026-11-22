@@ -730,12 +730,15 @@ pub fn register_runtime_natives() -> WamrResult<()> {
             attachment: std::ptr::null_mut(),
         });
     }
-    let mut native = native.into_boxed_slice();
+    // **Box::leak**：WAMR 只存指针不复制——数组必须在进程生命周期内存活。
+    // into_boxed_slice 后 drop（曾经的写法）= 注册指针悬垂 → resolve 读垃圾 →
+    // 'unlinked import'（CI E2E 实证：直调路径 checksum 全出、via_host 才失败）。
+    let native = Box::leak(native.into_boxed_slice());
     let credentials = leaked_cstr(HOST_NAMESPACE);
-    let ok = loomos_wamr_sys::register_natives_checked(credentials, &mut native)
-        .map_err(WamrError::from)?;
+    let ok =
+        loomis_wamr_sys::register_natives_checked(credentials, native).map_err(WamrError::from)?;
     if !ok {
-        return Err(WamrError::Sys(loomos_wamr_sys::SysError::InitFailed(
+        return Err(WamrError::Sys(loomis_wamr_sys::SysError::InitFailed(
             "register_natives 返回 false".into(),
         )));
     }
