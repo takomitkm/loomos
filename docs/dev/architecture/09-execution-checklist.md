@@ -120,3 +120,18 @@
 - [x] 再用 Proc Macro/Clippy 规则。（clippy -D warnings 门禁 0 警告；自定义 proc macro 按需后置）
 - [ ] 确有跨过程数据流需求再做 MIR 分析。（未开始）
 - [ ] 只有语言表达能力存在明确缺口才评估 rustc 修改。（未开始；`#![forbid(unsafe_code)]` 已覆盖 11/12 crate，loomos-sys 为声明式可信边界）
+
+## L. Nix/Wasm 平台化（2026-11-22 增补）
+
+- [x] 权威组件（CapabilityStore/Lease/Supervisor/Lifecycle/配置权威）留 Native Host，不迁 Wasm。（ADR-011 v1.1 主权边界；错误方案归档 archive/0001）
+- [x] ComponentManifest 移除 per-component execution 字段。（93c5b6e 已做，无残留引用）
+- [x] raw WAMR FFI 集中到第三声明式可信边界 loomos-wamr-sys；门面 forbid(unsafe_code)。（N1）
+- [x] WAMR 真加载/卸载/实例化 + 原子内存预算（CAS 预留→提交→回滚→释放）+ 关闭五步顺序。（N1，宿主测试全绿）
+- [x] AOT 兼容键 sidecar + 生产档 fail-closed + 魔数/版本校验（ aot v6）。（N1）
+- [x] Host ABI v1：11 接口统一 loomos.<iface>_v1 + 稳定错误码 + 能力校验 + 属主句柄表 + Guest 内存复制语义。（N2，stub 档全测）
+- [x] Nix 钉死 flake + 四包 + devShell + checks（fmt + 工具链防漂移）+ NixOS 模块 + 三系统配置 + 厂商工件登记。（N0，Unverified 待 CI）
+- [ ] flake.lock 生成入库 + `nix flake check`/`nix build` CI 首跑。（N0 收尾；本机无 Nix）
+- [ ] wamr-link 档真链路（CI：libiwasm.a 构建 + nlu 组件经 RuntimeHost 执行 + checksum 对齐 bench 基线）。（N1/N2 验证）
+- [ ] 业务组件 Host ABI 化迁移（nlu 先行，与 bench 基线字节级对齐）。（N3）
+- [ ] Windows/macOS 原生 runner 构建 + QEMU aarch64 对比（N4）。
+- [ ] NixOS 镜像 + A/B 槽位 + RAUC 评估 + 回滚演练（N5；板端分区不动）。

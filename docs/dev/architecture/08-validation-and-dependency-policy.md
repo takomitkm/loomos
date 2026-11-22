@@ -104,3 +104,19 @@ cargo build --release --target aarch64-unknown-linux-gnu
 - L1：文件、SQLite、普通进程生命周期，可使用测试用户和隔离目录。
 - L2：DMA、NPU 正常推理，需确认不影响现役链路和内存窗口。
 - L3：可能导致 NPU/AXI 挂死、需断电恢复的测试，必须人工批准、现场有人、有恢复方案；不得放进常规 PR CI。
+
+---
+
+## 8.x Nix 验证命令（2026-11-22 增补，ADR-012）
+
+在既有 `cargo fmt/clippy/test + run-prototype.sh` 之上，平台化新增（Linux/CI）：
+
+```bash
+nix flake check        # 评估 nixosConfigurations + 四包构建（host 含全仓 cargo test）+ fmt + 工具链防漂移
+nix build              # = .#loomos-host
+nix build .#loomos-components   # wasm32-wasip1 组件
+nix run .#smoke        # agent/run-prototype.sh（钉死工具链）
+```
+
+复现验收：两个干净 builder 独立重建 + 哈希比对（单次构建成功≠复现证明）。
+依赖准入照旧走 §8.2–8.3；Nix 侧新增依赖（flake input）同样须钉死并登记用途。

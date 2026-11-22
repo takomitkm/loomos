@@ -68,3 +68,23 @@ Status: proposed | accepted | rejected | superseded
 3. 已闭合事项从待办中移除；不要反复要求用户重新验证已回答的问题。
 4. 高风险板测必须有恢复窗口，不安排无人值守挂死注入。
 5. 不因技术名词“支持”就推断目标板已可用；需区分源码配置、DT 布线、驱动 probe、运行时接口和实测行为。
+
+## 10.6 平台化裁定与开放问题（2026-11-22 增补）
+
+裁定（详情见对应 ADR）：
+- **ADR-011 v1.1**：统一 Wasm 执行 + 主权边界修正——CapabilityStore/Lease/Supervisor/
+  Lifecycle/配置权威/推理后端永留 Native Host；性能表述限定已测负载；
+  「权威迁入 Wasm」方案否决并归档（archive/0001）。
+- **ADR-012**：Nix 为 WAMR 执行职责之外全部依赖的单一声明权威；厂商工件四级分类；
+  过渡期 APT 兜底不得宣称权威已替换；复现门=双 builder 独立重建+哈希比对。
+- **ADR-013**：双槽 A/B + RAUC 优先评估 + 13 步事务 + 回退；板端分区本阶段不动。
+
+开放问题（Open）：
+1. flake.lock 首跑与 CI nix 接入（N0 收尾）——本机 Windows 无 Nix，无法本地验证。
+2. loomis-host Linux 全量测试首跑结果（Nix buildRustPackage doCheck）——Windows 侧 163+ 全绿。
+3. wamr-link 真链路验收：libiwasm.a（nix 产物）链接 + register_natives + nlu 组件
+   执行 checksum 与 bench 基线（6159536122622086539）对齐。
+4. WAMR native 签名字母表（i I f F v * $）与 register_natives 的 module_name 语义
+   按文档确认，真机行为待 CI。
+5. Windows/macOS WAMR 构建与 AOT 加载（MAP_32BIT 补丁工程化）——N4。
+6. 板端 U-Boot bootenv/bootcount 语义调查——N5 前置（Unverified）。

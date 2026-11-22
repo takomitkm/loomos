@@ -103,3 +103,18 @@ Component Manifest 描述：身份、版本、依赖、允许的 Capability、�
 ## 3.8 现在不做的内核工作
 
 不立即实现 TCB、Context Switch、MMU、IPC Kernel 或 Native Scheduler。先验证 Linux 后端能否满足已知需求。内核改造优先评估：打开已有安全机制、完善 SMMU/DT、实时内核适配和厂商模块重编成本。
+
+---
+
+## 3.x 职责三分补遗（2026-11-22，ADR-011 v1.1/012 衔接）
+
+OS 运行时层的职责在平台化架构下进一步明确为：
+
+- **Nix/NixOS**：系统构建与包生命周期（本层不管运行时授权——它只声明式重建权限相关配置）；
+- **WAMR（loomos-wamr）**：业务组件执行（Wasm AOT/interp）；
+- **Native Host（loomosd + loomis-runtime 权威组件）**：CapabilityStore / ResourceLease /
+  Supervisor / Lifecycle / 配置权威 / 推理后端与硬件所有权——**永不 Wasm 化**。
+
+权威组件迁入 Wasm 的方案已否决归档（docs/dev/archive/0001）；架构细则见
+architecture/14/15/16；板端（内核 5.4）执行强制的现状与缺口仍以本文既有章节
+与 engineering/03-OS代劳清单 为准。

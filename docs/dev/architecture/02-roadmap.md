@@ -131,3 +131,20 @@ flowchart TD
 ## 2.4 阶段变更规则
 
 任何模块从“计划”变为“实现”前，必须明确：调用方、输入/输出、权限边界、故障行为、目标板验收方式。任何技术选型替换必须记录：替换原因、现有方案不足、性能/内存/维护代价、回退方案。
+
+## 2.5 平台化路线 N0–N5（2026-11-22 增补：统一 Wasm 执行 + Nix 系统重建）
+
+> 裁定：ADR-011 v1.1 / ADR-012 / ADR-013；架构细则：14/15/16。
+> 与 2.2 的 P0–P10 并行推进，不替代（OS Core 契约层是平台化的地基）。
+
+| 阶段 | 内容 | 状态（2026-11-22） |
+|---|---|---|
+| N0 | Nix 可复现地基：钉死 flake（nixpkgs/rust 1.99.1/WAMR@06f6c8c）、host/wamr/wamrc/components 包、devShell、checks（fmt+工具链防漂移） | **已交付，Unverified**（本机无 Nix；flake.lock 与 CI 首跑待做） |
+| N1 | WAMR Runtime Host 完成：真加载/实例生命周期/原子内存预算/AOT 兼容键 fail-closed；FFI 集中 loomos-wamr-sys 第三可信边界 | **已交付**（宿主测试全绿；wamr-link 真链路待 CI） |
+| N2 | Host ABI v1：11 接口 loomos.<iface>_v1、稳定错误码、CapabilityChecker、属主句柄表、Guest 内存 validate+复制语义 | **已交付**（stub 档全测；真注册待 CI） |
+| N3 | 业务组件迁移：nlu→home→executor→audio/vision 业务逻辑；组件包格式+checksum；与 native 基线输出等价校验 | 部分（nlu wasm32-wasip1 构建已验证——bench 三形态；其余未开始） |
+| N4 | 多平台：Linux x86_64/AArch64（nix 已布）、Windows/macOS 原生 runner、交叉构建、QEMU aarch64 对比测试 | 未开始（bench 已证 QEMU aarch64 可行） |
+| N5 | NixOS/全 Nix 镜像 + A/B：厂商内核工件接入、RAUC、槽位回退演练、签名发布、Store GC | 未开始（fmql 配置为可评估过渡占位；板端分区不动） |
+
+验收纪律：每阶段独立提交+推送；文档声称的实现必须有对应代码与测试；
+板级事实 Unverified 如实标注，不以 QEMU 冒充板测。
