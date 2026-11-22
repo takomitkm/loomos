@@ -470,8 +470,12 @@ mod tests {
 
     #[test]
     fn drop_backstop_resets_singleton() {
+        if sys::linked() {
+            eprintln!("skip: WAMR 生命周期由 CI E2E 覆盖");
+            return;
+        }
         let _g = guard();
-        // 不 shutdown 直接 drop：兜底清理 + 单例释放
+        // 不 shutdown 直接 drop：兜底清理 + 单例释放（stub 档）
         {
             let _host = RuntimeHost::init(stub_cfg()).unwrap();
         }
