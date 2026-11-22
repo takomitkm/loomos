@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  host:
+    # Host CI（architecture/08 §8.5）：fmt / clippy / test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: fmt
+        run: cargo fmt --all --check
+      - name: clippy（0 warning 门禁）
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: test
+        run: cargo test --workspace
+      - name: 一键原型验收
+        run: bash agent/run-prototype.sh
+
+  cross:
+    # Cross CI：aarch64 check（无需 linker；构建与板测按依赖准入另行执行）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - name: aarch64 cargo check
+        run: cargo check --workspace --all-targets --target aarch64-unknown-linux-gnu
+      - name: aarch64 loomos-sys linux-backend check
+        run: cargo check -p loomos-sys --target aarch64-unknown-linux-gnu --features linux-backend
+      - name: Linux Backend 探针测试（ubuntu；只断言档位形状，不断言 enforced——无 CAP_SYS_NICE）
+        run: cargo test -p loomos-runtime -p loomos-sys --features linux-backend
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
