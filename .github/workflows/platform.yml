@@ -123,8 +123,8 @@ jobs:
           IWASM_LIB_DIR: ${{ steps.lib.outputs.dir }}
           LOOMOS_E2E_WASM: ${{ github.workspace }}/target/wasm32-wasip1/release/loomis_nlu_wasm_wrap.wasm
         run: |
-          cargo test -p loomos-wamr --features loomos-wamr/wamr-link --test e2e_nlu -- --test-threads=1 --nocapture \n            | grep "E2E PARITY CHECKSUM" | tee parity-${{ matrix.os }}.txt
-
+          cargo test -p loomos-wamr --features loomos-wamr/wamr-link --test e2e_nlu -- --test-threads=1 --nocapture 
+            | grep "E2E PARITY CHECKSUM" | tee parity-${{ matrix.os }}.txt
   parity:
     # N4 验收：同一 canonical .wasm 在三平台输出校验和一致
     name: cross-platform-parity
