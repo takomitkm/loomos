@@ -50,14 +50,25 @@ cargo run -p loomos-cli -- serve
 curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客厅的灯"}'
 ```
 
+Nix 构建（Linux/CI；Unverified 待首跑——见 [nix/README.md](nix/README.md)）：
+
+```bash
+nix flake check              # 评估 + 构建 + 测试 + 工具链防漂移
+nix build                    # Native Host（构建即跑全仓测试）
+nix develop                  # 钉死工具链开发环境
+```
+
 ## 原型仓库结构
 
 | 路径 | 内容 |
 |---|---|
-| `crates/loomos-sys` | **全仓唯一可信边界 crate**（其余全部 `#![forbid(unsafe_code)]`）：OS 映射 unsafe 封装——CpuBudget→SCHED_DEADLINE、MemoryLimit→RLIMIT_AS、核亲和→sched_setaffinity，**施加后读回验证**才报 enforced |
+| `crates/loomos-sys` | **声明式可信边界 ①**（OS 映射 unsafe 封装——CpuBudget→SCHED_DEADLINE、MemoryLimit→RLIMIT_AS、核亲和→sched_setaffinity，**施加后读回验证**才报 enforced） |
 | `crates/loomos-runtime` | ID / 资源租约（可观测确认点）/ Capability（主体聚合+generation 撤销）/ 配置服务（Schema·Revision·Outbox·Desired-Applied）/ 组件生命周期 / Supervisor（四类故障×三级恢复）/ 事件日志 |
 | `crates/loomos-inference` | 推理编排契约：排队/准入/取消语义、Buffer 所有权 **typestate**（未确认完成不得释放）、单 Owner、隔离区 |
 | `crates/loomos-device` | 设备核心（描述符/提供者/Operation 状态机/租约/遥测/故障）+ mock 家居提供者 + 板端 HTTP 适配器（8091/8092/8093 契约） |
+| `crates/loomos-ort-sys` | **声明式可信边界 ②**：onnxruntime 动态加载最小绑定（OrtApi v20 307 槽位，脚本生成） |
+| `crates/loomos-wamr-sys` | **声明式可信边界 ③**：WAMR C API 最小绑定（静态链接 libiwasm.a；stub 档始终可编译）——raw FFI 全仓只在此处 |
+| `crates/loomos-wamr` | **WAMR Runtime Host（ADR-011 v1.1）**：模块真加载/卸载（缓冲同生命周期契约）、实例生命周期（CAS 原子内存预算：预留→提交→回滚→释放）、AOT 兼容键 fail-closed、Host ABI v1（能力校验/属主句柄表/稳定错误码）；`#![forbid(unsafe_code)]` |
 | `crates/loomos-audio` | WAV、重采样（linear 升采样 / decimate3-mavg3 降采样——沿旧板实测选型）、能量门/VAD、KWS/ASR/TTS 档位（默认档 echo/sine 全自检） |
 | `crates/loomos-adapters-sherpa` | **sherpa-onnx 真引擎适配器**：Python API 子进程驱动（Windows/aarch64 同一套命令），实现 ASR/TTS trait；模型缺失时优雅 skip |
 | `crates/loomos-nlu` | 实体/区域注册表、中文规则语法、直连整句表（不做子串）、klar v2 外部引擎适配契约 |
@@ -71,16 +82,21 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
 | `deploy/` | 板上部署工件：systemd 非 root 单元 / 看门狗 DT 片段 / install 脚本（未上板验证，上板后回填 EVIDENCE） |
 | `manifests/` | 组件 Manifest（TOML）：voice-pipeline / vision |
 | `fixtures/` · `reports/` | 语音夹具 / 验收报告（由脚本生成，不得手改） |
+| `flake.nix` · `nix/` | **Nix 系统重建（ADR-012）**：钉死 nixpkgs/Rust 1.99.1/WAMR@06f6c8c；loomos-host/wamr/wamrc/components 包；services.loomos NixOS 模块；厂商工件登记（证据等级 Unverified，待 CI） |
+| `docs/dev/archive/` | 已否决方案的归档（0001：权威迁入 Wasm——错在哪/为何错/被什么取代） |
 
 ## 原型验证矩阵（architecture/08 §8.5 三层）
 
 | 层 | 内容 | 入口 |
 |---|---|---|
-| Host CI | fmt / clippy -D warnings / 154 项测试 / smoke 12/12 | `bash agent/run-prototype.sh` |
+| Host CI | fmt / clippy -D warnings / 全仓测试（163+ 项）/ smoke 12/12 | `bash agent/run-prototype.sh` |
 | Cross CI | aarch64 `cargo check`（无需 linker） | `.github/workflows/ci.yml` |
+| Nix CI（Linux） | `nix flake check` / 四包构建 / 工具链防漂移 | `nix flake check`（flake.lock 入库后） |
 | Hardware CI | 板上 smoke / RSS / 延迟（风险等级 L0–L3） | 上板时另行记录，**不以宿主数值替代** |
 
 ## 原型定位声明
+
+架构方向（ADR-011 v1.1/012/013）：**Wasm（WAMR AOT）执行业务组件 + Native Host 持权威（Capability/Lease/Supervisor/Lifecycle）+ Nix 管系统重建与包生命周期 + Linux 内核强制**；平台化路线见 architecture/02 §2.5。
 
 研究原型：真实 sherpa-onnx / 厂商 NPU Runtime / klar 引擎 / 物理设备都走同一 trait 的
 适配器档位，默认档全 mock 全自检（旧 lang/config 的 echo/sine 纪律）。所有证据只到

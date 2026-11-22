@@ -40,3 +40,25 @@ curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客�
   要有运行时证据
 - L2/L3 板测（NPU/DMA）必须人工窗口，不进无人值守 CI
 - 2026-11-20：真引擎适配器 loomos-adapters-sherpa 落地（sherpa-onnx Python API 子进程路线，宿主实跑证据见 EVIDENCE）。
+
+---
+
+## Nix 过渡路径（2026-11-22，ADR-012/013）
+
+本目录的 tarball+脚本安装（install-board.sh + loomosd.service）是**过渡期兜底**：
+在 Nix 镜像路径通过验收门（QEMU 可引导 + 健康检查 + 回滚演练，见
+architecture/16）之前保留，之后退役。**过渡期不宣称包管理权威已替换。**
+
+新路径（已交付，Unverified 待 CI）：
+
+```bash
+nix build .#loomos-host          # Native Host（构建即跑全仓测试，Linux）
+nix build .#loomos-wamr          # libiwasm.a
+nix build .#loomos-components    # wasm32-wasip1 组件
+nixos-rebuild build --flake .#fmql30tai676h   # 过渡期系统配置（可评估）
+```
+
+- 可变数据：systemd StateDirectory=/var/lib/loomos（NixOS 模块 services.loomos）；
+- 板端 1GB RAM：构建在开发机/CI，设备只收闭包/镜像；
+- 厂商 BSP（内核 5.4.52/NPU Runtime/U-Boot）为 ExternallyProvisioned 工件，
+  登记与哈希纪律见 nix/vendor/sources.nix。

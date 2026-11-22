@@ -8,7 +8,7 @@
 ## 0. 30 秒结论
 
 - **改任何代码前后都要跑** `bash agent/run-prototype.sh`（全绿=退出码 0）。
-- unsafe 默认禁止；本仓库当前 0 unsafe，保持它。
+- unsafe 默认禁止；仅限三条**声明式可信边界**：loomos-sys（OS 映射）、loomos-ort-sys（ONNX）、loomos-wamr-sys（WAMR）。其余 crate `#![forbid(unsafe_code)]`（含 loomos-wamr 门面）——新增 raw FFI 一律走新 sys crate 或 ADR 修订。
 - 不确定的事**停下写进 OPEN**，不要猜、不要编造证据。
 
 ## 1. 一键执行（Agent 的第一入口）
@@ -16,6 +16,10 @@
 ```bash
 bash agent/run-prototype.sh          # 全流程：test → fixtures → smoke → 报告
 bash agent/run-prototype.sh --fast   # 跳过已通过的测试（仅快速 smoke）
+
+# Nix 验证（Linux/CI；Unverified 待首跑）
+nix flake check                      # 评估 + 构建 + 测试 + fmt + 工具链防漂移
+nix build                            # Native Host（构建即跑全仓测试）
 ```
 
 - 退出码 0 = 全绿；非 0 = 有失败，**先看 `reports/prototype-report.md` 再改代码**。
@@ -79,6 +83,8 @@ bash agent/run-prototype.sh --fast   # 跳过已通过的测试（仅快速 smok
 | 新增一条语音指令 | `loomos-nlu` 加意图/短语（若直连，加进 `direct_table`；语法类加规则）→ `loomos-home::ActionRegistry` 加映射 → `loomos-cli::expectations()` 加期望 → 加夹具（`standard_fixtures()`）→ smoke 验证 |
 | 新增一种设备 | 实现 `DeviceProvider`（mock 先行）→ 注册进 `loomosd::System::assemble` → Capability 授权 → （可选）HTTP 适配器 + 板端契约测试 |
 | 换真实引擎（sherpa-onnx / klar / 厂商 NPU） | 实现对应 trait（`AsrBackend`/`TtsBackend`/`KwsBackend`/`VadBackend`/`Backend`/`ExternalNlu`），feature-gate，**默认档保持 echo/sine 全自检** |
+| Wasm 组件执行/Host ABI | `loomos-wamr`（RuntimeHost/instantiate/invoke + host_abi）；raw FFI 只进 `loomos-wamr-sys`；权威组件不迁 Wasm（ADR-011 v1.1） |
+| Nix 构建/系统配置 | `flake.nix` + `nix/`（ADR-012）；新增依赖必须钉死（flake input/Cargo.lock/工具链）；厂商工件登记 nix/vendor/sources.nix |
 | unsafe 重构任务 | 读 `agent/tasks/unsafe-refactor.md`，按其中流程与停止条件执行 |
 | 配置变更 | 走 Configuration Service（Schema 校验 + Revision + Outbox），不要旁路读文件 |
 

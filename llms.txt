@@ -25,6 +25,7 @@ docs/
 │       │   └── ZG330平台能力边界-原始调查记录.md
 │       ├── MEOW R16 24/             # 我的电脑
 │       └── WIN11-HV1/               # Hyper-V
+├── archive/                     # 已否决方案归档（0001 权威迁入 Wasm 等）——只读，注明错在哪/被什么取代
 └── user/
     └── README.md
 
@@ -35,6 +36,7 @@ docs/
 - **07 在 architecture 层留空**：平台基线天然是板级事实，没有跨机型版本
 
 规则
+- archive    = 错误历史（被否决方案），只读；现行方案一律以 engineering/ADR-* 与 architecture/ 为准
 - baseline   = 冻结原稿，只读不改
 - architecture = 跨机型必须成立的约束与接口；一句话搬到别的板仍成立 ⇒ 放这里
 - platforms/<机型> = 该机型怎么满足 + 实测证据；不成立 ⇒ 放这里
@@ -59,7 +61,12 @@ crates/
 ├── loomos-executor/     # 双通道执行器 + 固定应答 + TTS 文本映射
 ├── loomosd/             # 装配(System, VisionMode 可拆卸) + 语音管线 + 控制台 HTTP（10900）
 └── loomos-cli/          # gen-fixtures / smoke(一键验收) / replay / say / serve
+├── loomos-ort-sys/      # 声明式可信边界②：onnxruntime 动态加载最小绑定（v20 307 槽位）
+├── loomos-wamr-sys/     # 声明式可信边界③：WAMR C API 绑定（静态 libiwasm.a；raw FFI 全仓只在此处）
+├── loomos-wamr/         # WAMR Runtime Host（ADR-011 v1.1）：真加载/实例生命周期/原子内存预算/AOT 兼容键/Host ABI v1（forbid unsafe）
 └── loomos-nlu-bench/    # （workspace 内）NLU 三模式基准 native/WAMR interp/WAMR aot——wamr feature 门控，默认构建仅 native
+
+flake.nix + nix/          # Nix 系统重建（ADR-012）：钉死 nixpkgs/rust/WAMR 源码；loomos-host/wamr/wamrc/components 包；services.loomos NixOS 模块；vendor/sources.nix 厂商工件登记——Unverified 待 CI
 
 deploy/                   # 板上部署工件（systemd 非 root 单元/DT 看门狗/install 脚本）——未上板验证
 agent/
@@ -75,6 +82,10 @@ docs/dev 新增（上文编号规则同样适用）：
 - engineering/03-OS代劳清单.md # 内核 5.4 缺口撑起的用户态工作盘点：哪些该让 OS 代劳（A 保留/B 立刻代劳/C 永久保留/D 换内核解锁）
 - engineering/04-OS功能依赖与自实现删减.md # loomos 用了 OS 的哪些功能（≤15 syscall 族）+ 参考 OS 语义删减成自实现的最小形态
 - engineering/dependency-ledger.md # 依赖台账（08 §8.3 字段；gen-dependency-ledger.py 生成；Hardware 列未验证）
+- engineering/ADR-011-统一Wasm执行.md  # v1.1：统一 Wasm 执行 + 主权边界（权威组件永留 Native Host）
+- engineering/ADR-012-Nix系统重建与包管理权威.md # Nix 单一声明权威 + 厂商工件四级分类
+- engineering/ADR-013-AB系统镜像与回滚.md # 双槽 A/B + RAUC + 13 步事务
+- architecture/14-nix-system-reconstruction.md / 15-wasm-platform-build.md / 16-system-image-and-ab.md # 平台化架构细则
 
 新增规则：
 - engineering = 工程纪律（Agent 行为规范 / unsafe / 契约模板），与机型无关
