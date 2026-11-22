@@ -1,0 +1,12 @@
+[package]
+name = "loomos-ab"
+version.workspace = true
+edition.workspace = true
+description = "A/B 系统更新状态机（ADR-013）：双槽事务/引导计数回退/共享数据迁移纪律——自动化验证层（板端分区不动）"
+
+[dependencies]
+loomos-runtime = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

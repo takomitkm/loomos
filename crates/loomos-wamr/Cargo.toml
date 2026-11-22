@@ -6,6 +6,7 @@ description = "WAMR Runtime Host（P1，ADR-011 v1.1）：Wasm/AOT 模块真加�
 
 [dependencies]
 loomos-wamr-sys = { workspace = true }
+loomos-runtime = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -17,7 +17,7 @@
 //!   （compat.json + manifest.source 字段）。
 
 use crate::error::{WamrError, WamrResult};
-use crate::sha256::sha256_hex;
+use loomos_runtime::hash::sha256_hex;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

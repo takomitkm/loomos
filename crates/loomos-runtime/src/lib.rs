@@ -15,6 +15,7 @@ pub mod capability;
 pub mod component;
 pub mod config;
 pub mod event;
+pub mod hash;
 pub mod ids;
 pub mod platform;
 pub mod resource;
@@ -26,6 +27,7 @@ pub use config::{
     ConfigError, ConfigService, ConfigTransaction, ConfigValue, NamespacePath, Schema, SchemaField,
 };
 pub use event::{Event, EventKind, EventLog};
+pub use hash::sha256_hex;
 pub use ids::{ComponentId, ExecutionId, LeaseId, OperationId, ResourceId};
 pub use platform::{EnforcementLevelReport, MappingReport};
 pub use resource::{
