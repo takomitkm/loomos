@@ -10,7 +10,6 @@ provides = ["voice-pipeline.v1"]
 requires = ["nlu.v1", "executor.v1"]
 capabilities = ["device.command", "config.write"]
 resources = []
-execution = ["same-address-space"]
 
 [voice-pipeline.health]
 kind = "heartbeat"
@@ -27,7 +26,6 @@ version = 1
 provides = ["nlu.v1"]
 requires = []
 capabilities = []
-execution = ["same-address-space"]
 
 [nlu.health]
 kind = "none"
@@ -43,7 +41,6 @@ version = 1
 provides = ["executor.v1"]
 requires = ["nlu.v1", "device-registry.v1"]
 capabilities = ["device.command"]
-execution = ["same-address-space"]
 
 [executor.health]
 kind = "heartbeat"
@@ -59,7 +56,6 @@ version = 1
 provides = ["device-registry.v1"]
 requires = ["config-service.v1"]
 capabilities = ["device.command"]
-execution = ["same-address-space"]
 
 [device-registry.health]
 kind = "heartbeat"
@@ -76,7 +72,6 @@ version = 1
 provides = ["config-service.v1"]
 requires = []
 capabilities = []
-execution = ["same-address-space"]
 
 [config-service.health]
 kind = "heartbeat"

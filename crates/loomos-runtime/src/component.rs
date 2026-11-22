@@ -25,9 +25,6 @@ pub struct ComponentManifest {
     /// 资源请求（kind 描述字符串，如 "DeviceLease:npu0"）。
     #[serde(default)]
     pub resources: Vec<String>,
-    /// 支持的执行模型（same-address-space / isolated-process）。
-    #[serde(default)]
-    pub execution: Vec<String>,
     /// 健康检查策略描述。
     #[serde(default)]
     pub health: HealthPolicy,
@@ -237,7 +234,6 @@ mod tests {
             requires: vec![],
             capabilities: vec![],
             resources: vec![],
-            execution: vec!["same-address-space".into()],
             health: HealthPolicy::default(),
             recovery: RecoverySpec::default(),
         }

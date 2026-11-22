@@ -1,0 +1,15 @@
+[package]
+name = "loomos-wamr"
+version.workspace = true
+edition.workspace = true
+description = "WAMR Runtime Host（P1）：Wasm/AOT 模块加载、实例管理、内存/栈预算、Host API 注册"
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = []
+# WAMR C API 静态链接（需要 IWASM_LIB_DIR 环境变量指向 libiwasm.a / iwasm.lib）
+wamr-link = []

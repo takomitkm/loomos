@@ -429,7 +429,7 @@ fn component_manifest(id: &str, requires: &[&str], capabilities: &[&str]) -> Com
         requires: requires.iter().map(|s| s.to_string()).collect(),
         capabilities: capabilities.iter().map(|s| s.to_string()).collect(),
         resources: vec![],
-        execution: vec!["same-address-space".into()],
+        // ADR-011: execution 字段已废弃（统一 Wasm 执行）
         health: Default::default(),
         recovery: Default::default(),
     }
