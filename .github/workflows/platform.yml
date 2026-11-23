@@ -87,14 +87,14 @@ jobs:
               -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
               -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1 \
               -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
-              -DWAMR_BUILD_MULTI_MODULE=0
+              -DWAMR_BUILD_MULTI_MODULE=0 \n              -DWAMR_BUILD_REF_TYPES=1  # 组件使用引用类型；windows 构建实证未开该特性→load 失败
           else
             cmake -S "product-mini/platforms/$PLAT" -B build \
               -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1 \
               -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
               -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1 \
               -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
-              -DWAMR_BUILD_MULTI_MODULE=0
+              -DWAMR_BUILD_MULTI_MODULE=0 \n              -DWAMR_BUILD_REF_TYPES=1  # 组件使用引用类型；windows 构建实证未开该特性→load 失败
           fi
           # 只编 vmlib（静态库）——windows 的 shared/dll 双目标在 clangcl 下重复符号
           # （iwasm.vcxproj vs libiwasm.lib 实证）；本仓只需要静态库
