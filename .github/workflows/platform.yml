@@ -23,6 +23,7 @@ env:
 jobs:
   nix:
     name: nix-flake
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +50,7 @@ jobs:
   wamr-matrix:
     # 三平台：真构建 libiwasm → wamr-link 档全测 → E2E 真加载 NLU 组件 → checksum 上传
     name: wamr-${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -144,6 +146,7 @@ jobs:
   parity:
     # N4 验收：同一 canonical .wasm 在三平台输出校验和一致
     name: cross-platform-parity
+    timeout-minutes: 15
     needs: wamr-matrix
     runs-on: ubuntu-latest
     steps:
@@ -163,6 +166,7 @@ jobs:
   wasm-aot:
     # N3/N4：wamrc 产出 aarch64 AOT + 魔数/版本头校验
     name: wasm-components-and-aot
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
