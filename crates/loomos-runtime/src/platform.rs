@@ -107,7 +107,8 @@ mod tests {
     /// 进程级副作用随子进程退出消失；父进程只验证退出码。测试语义不变。
     /// 两个探针测试共用此助手——任一探针（尤其 memory_bytes=1024 的矮预算
     /// 变体）设限后，同进程其它测试线程必然栈分配失败。
-    fn run_probe_in_child(test_name: &str) {
+    /// 返回 true = 父进程已委派子进程执行，调用方应提前 return。
+    fn run_probe_in_child(test_name: &str) -> bool {
         #[cfg(feature = "linux-backend")]
         {
             if std::env::var_os("LOOMOS_PROBE_CHILD").is_none() {
@@ -118,14 +119,20 @@ mod tests {
                     .status()
                     .expect("spawn probe child");
                 assert!(status.success(), "子进程探针失败: {status}");
-                return;
+                return true;
             }
         }
+        // linux-backend 未启用（非 Linux 宿主）时探针本就无副作用——显式引用
+        // 保持参数完整（clippy 在 stub 档的 unused lint）
+        let _ = test_name;
+        false
     }
 
     #[test]
     fn probe_reports_three_items_with_honest_levels() {
-        run_probe_in_child("platform::tests::probe_reports_three_items_with_honest_levels");
+        if run_probe_in_child("platform::tests::probe_reports_three_items_with_honest_levels") {
+            return;
+        }
         let budget = CpuBudget {
             runtime_us: 30_000,
             period_us: 100_000,
@@ -151,7 +158,9 @@ mod tests {
 
     #[test]
     fn probe_without_budget_reports_skip() {
-        run_probe_in_child("platform::tests::probe_without_budget_reports_skip");
+        if run_probe_in_child("platform::tests::probe_without_budget_reports_skip") {
+            return;
+        }
         let cores = CoreSet::new(vec![0], 4).unwrap();
         let reports = probe(None, 1024, &cores);
         assert_eq!(reports[0].evidence, "未配置预算，跳过");
