@@ -101,22 +101,19 @@ pub fn probe(
 mod tests {
     use super::*;
 
-    #[test]
-    fn probe_reports_three_items_with_honest_levels() {
-        // Linux 下探针会真实 setrlimit(RLIMIT_AS)（进程级、测试内不可恢复）——
-        // 直接跑会破坏同二进制后续并行测试线程的栈分配（CI ubuntu 实证：
-        // "failed to allocate an alternative stack"）。改为子进程执行探针，
-        // 进程级副作用随子进程退出消失；父进程只验证退出码。测试语义不变。
+    /// Linux 下探针会真实 setrlimit(RLIMIT_AS)（进程级、测试内不可恢复）——
+    /// 直接跑会破坏同二进制后续并行测试线程的栈分配（CI ubuntu 实证：
+    /// "failed to allocate an alternative stack"）。改为子进程执行探针，
+    /// 进程级副作用随子进程退出消失；父进程只验证退出码。测试语义不变。
+    /// 两个探针测试共用此助手——任一探针（尤其 memory_bytes=1024 的矮预算
+    /// 变体）设限后，同进程其它测试线程必然栈分配失败。
+    fn run_probe_in_child(test_name: &str) {
         #[cfg(feature = "linux-backend")]
         {
             if std::env::var_os("LOOMOS_PROBE_CHILD").is_none() {
                 let exe = std::env::current_exe().expect("current_exe");
                 let status = std::process::Command::new(exe)
-                    .args([
-                        "--exact",
-                        "platform::tests::probe_reports_three_items_with_honest_levels",
-                        "--nocapture",
-                    ])
+                    .args(["--exact", test_name, "--nocapture"])
                     .env("LOOMOS_PROBE_CHILD", "1")
                     .status()
                     .expect("spawn probe child");
@@ -124,6 +121,11 @@ mod tests {
                 return;
             }
         }
+    }
+
+    #[test]
+    fn probe_reports_three_items_with_honest_levels() {
+        run_probe_in_child("platform::tests::probe_reports_three_items_with_honest_levels");
         let budget = CpuBudget {
             runtime_us: 30_000,
             period_us: 100_000,
@@ -149,6 +151,7 @@ mod tests {
 
     #[test]
     fn probe_without_budget_reports_skip() {
+        run_probe_in_child("platform::tests::probe_without_budget_reports_skip");
         let cores = CoreSet::new(vec![0], 4).unwrap();
         let reports = probe(None, 1024, &cores);
         assert_eq!(reports[0].evidence, "未配置预算，跳过");
