@@ -81,9 +81,20 @@ jobs:
           if [ "$PLAT" = "windows" ]; then
             # MSVC 对 aot_reloc_x86_64.c 报 C2099（非常量初始化）——clangcl 工具集可编；
             # runner 默认生成器 = Visual Studio 18 2026，不显式指定 -G（CI 实证）
-            cmake -T clangcl               -S "product-mini/platforms/$PLAT" -B build               -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1               -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0               -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1               -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0               -DWAMR_BUILD_MULTI_MODULE=0
+            cmake -T clangcl \
+              -S "product-mini/platforms/$PLAT" -B build \
+              -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1 \
+              -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
+              -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1 \
+              -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
+              -DWAMR_BUILD_MULTI_MODULE=0
           else
-            cmake -S "product-mini/platforms/$PLAT" -B build               -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1               -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0               -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1               -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0               -DWAMR_BUILD_MULTI_MODULE=0
+            cmake -S "product-mini/platforms/$PLAT" -B build \
+              -DWAMR_BUILD_AOT=1 -DWAMR_BUILD_INTERP=1 \
+              -DWAMR_BUILD_FAST_JIT=0 -DWAMR_BUILD_LLVM_JIT=0 \
+              -DWAMR_BUILD_WASI=1 -DWAMR_BUILD_LIBC_WASI=1 \
+              -DWAMR_BUILD_LIB_PTHREAD=0 -DWAMR_BUILD_SIMD=0 \
+              -DWAMR_BUILD_MULTI_MODULE=0
           fi
           # 只编 vmlib（静态库）——windows 的 shared/dll 双目标在 clangcl 下重复符号
           # （iwasm.vcxproj vs libiwasm.lib 实证）；本仓只需要静态库
@@ -121,66 +132,14 @@ jobs:
         shell: bash
         env:
           IWASM_LIB_DIR: ${{ steps.lib.outputs.dir }}
-          LOOMOS_E2E_WASM: ${{ github.workspace }}/target/wasm32-wasip1/release/loomis_nlu_wasm_wrap.wasm
+          LOOMOS_E2E_WASM: ${{ github.workspace }}/target/wasm32-wasip1/release/loomos_nlu_wasm_wrap.wasm
         run: |
-          cargo test -p loomos-wamr --features loomos-wamr/wamr-link --test e2e_nlu -- --test-threads=1 --nocapture 
+          cargo test -p loomos-wamr --features loomos-wamr/wamr-link --test e2e_nlu -- --test-threads=1 --nocapture \
             | grep "E2E PARITY CHECKSUM" | tee parity-${{ matrix.os }}.txt
-  parity:
-    # N4 验收：同一 canonical .wasm 在三平台输出校验和一致
-    name: cross-platform-parity
-    needs: wamr-matrix
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-      - name: 三平台校验和比对
-        shell: bash
-        run: |
-          set -e
-          U=$(grep -o '[0-9a-f]\{16\}' parity-ubuntu-latest/parity-ubuntu-latest.txt)
-          W=$(grep -o '[0-9a-f]\{16\}' parity-windows-latest/parity-windows-latest.txt)
-          M=$(grep -o '[0-9a-f]\{16\}' parity-macos-latest/parity-macos-latest.txt)
-          echo "ubuntu=$U windows=$W macos=$M"
-          test "$U" = "$W" && test "$U" = "$M" \
-            || { echo "奇偶校验失败：跨平台输出不一致"; exit 1; }
-          echo "OK: 同一 .wasm 组件三平台输出逐字节一致"
-
-  wasm-aot:
-    # N3/N4：wamrc 产出 aarch64 AOT + 魔数/版本头校验
-    name: wasm-components-and-aot
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/upload-artifact@v4
         with:
-          toolchain: "1.99.1"
-      - name: rustup target add wasm32-wasip1
-        run: rustup target add wasm32-wasip1
-      - name: 构建 wasm 组件
-        run: cargo build --release -p loomos-nlu-wasm-wrap --target wasm32-wasip1
-      - name: 构建 wamrc
-        run: |
-          sudo apt-get update && sudo apt-get install -y llvm-18-dev libclang-18-dev clang-18
-          rm -rf wamr-src
-          git init -q wamr-src
-          cd wamr-src
-          git remote add origin https://github.com/bytecodealliance/wasm-micro-runtime.git
-          git fetch -q --depth 1 origin "$WAMR_REV"
-          git checkout -q -f FETCH_HEAD
-          test -d wamr-compiler || { echo "wamrc 目录缺失（上游改名 wamr-compiler）"; ls; exit 1; }
-          cmake -S wamr-compiler -B wamrc-build -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm
-          cmake --build wamrc-build -j
-      - name: wamrc → aarch64 AOT + 魔数校验
-        run: |
-          WASM=target/wasm32-wasip1/release/*.wasm
-          wamr-src/wamrc-build/wamrc --target=aarch64 -o /tmp/nlu.aot $WASM
-          python3 -c "
-          import struct
-          b = open('/tmp/nlu.aot','rb').read(8)
-          assert b[:4] == b'\x00\x61\x6f\x74', f'AOT magic mismatch: {b[:4].hex()}'
-          v = struct.unpack('<I', b[4:8])[0]
-          print(f'AOT version={v}')
-          assert v == 6, f'AOT version {v} != 6'
-          "
+          name: parity-${{ matrix.os }}
+          path: parity-${{ matrix.os }}.txt
 
   parity:
     # N4 验收：同一 canonical .wasm 在三平台输出校验和一致
