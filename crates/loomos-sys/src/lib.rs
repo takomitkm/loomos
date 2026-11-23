@@ -291,6 +291,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(all(target_os = "linux", feature = "linux-backend")))]
+    // 仅桩路径存在时运行（非 Linux 目标 或 linux-backend 未启用）——
+    // linux-backend 开启且 Linux 时走真实实现（Applied），不是桩，不应跑此断言
     fn stub_reports_unsupported_off_linux() {
         // 非 Linux 目标（含本机 windows-gnu）：桩必须如实报 Unsupported
         let o = apply_cpu_budget(30_000, 100_000, 90_000);
