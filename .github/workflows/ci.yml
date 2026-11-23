@@ -13,7 +13,7 @@ jobs:
     # Host CI（architecture/08 §8.5）：fmt / clippy / test
     # timeout 兜底：fresh runner 全量编译 18 crates+测试二进制偏长，
     # 超时直接失败给出诊断（默认 3600min 无法暴露卡死）
-    timeout-minutes: 45
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +38,7 @@ jobs:
 
   cross:
     # Cross CI：aarch64 check（无需 linker；构建与板测按依赖准入另行执行）
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

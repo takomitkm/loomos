@@ -23,7 +23,7 @@ env:
 jobs:
   nix:
     name: nix-flake
-    timeout-minutes: 60
+    timeout-minutes: 120
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
   wamr-matrix:
     # 三平台：真构建 libiwasm → wamr-link 档全测 → E2E 真加载 NLU 组件 → checksum 上传
     name: wamr-${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
