@@ -30,8 +30,10 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
     mkdir -p $out/bin
-    found=$(find . -name 'wamrc' -type f | head -1)
-    [ -n "$found" ] || { echo "wamrc 未产出"; exit 1; }
+    # CMake 构建目录可能是 sourceRoot 下的 build/ 或 Nix 全局 /build。
+    # 宽范围搜索（当前目录 + /build），失败时打印诊断。
+    found=$(find . /build -name 'wamrc' -type f 2>/dev/null | head -1)
+    [ -n "$found" ] || { echo "wamrc 未产出（搜索范围: . /build）"; ls -R . 2>/dev/null | head -20; exit 1; }
     cp "$found" $out/bin/wamrc
     runHook postInstall
   '';
