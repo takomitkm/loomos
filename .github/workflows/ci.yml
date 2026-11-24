@@ -4,6 +4,8 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  # 手动重跑（误取消/重验证场景）
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
