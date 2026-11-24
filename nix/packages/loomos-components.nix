@@ -17,10 +17,10 @@ loomos-rust-platform.buildRustPackage {
     mkdir -p $out/components
     # 产物位置由 nixpkgs 构建钩子设置的 CARGO_TARGET_DIR 环境变量决定
     # （构建钩子预设该值，产物不在 ./target 下，多轮实证）。
-    # 关键语法：NiX 双引号字符串里插值只由 "美元加花括号" 触发——
-    # 写 "${VAR}" 触发插值报 undefined variable，反斜杠转义非法报
-    # 语法错误；**不带花括号的 "$VAR" 原样传给 shell**，由 shell 展开。
-    # 这正是之前几轮反复报错、从未命中正确写法的坑。
+    # 关键语法：NiX 双引号字符串整体插值——插值由「美元加花括号」触发，
+    # **连注释里的这种写法也会被插值**（本轮实证：注释里写了这种字面量，
+    # NiX 报 undefined variable 'VAR'）。反斜杠转义非法直接语法错误。
+    # 正确写法是不带花括号的美元变量，原样传给 shell 由 shell 展开。
     # 多路径回退：优先钩子预设目录，回退工作目录 target 与 /build。
     found=$(find "$CARGO_TARGET_DIR" -name '*.wasm' -type f 2>/dev/null | head -1)
     [ -n "$found" ] || found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
