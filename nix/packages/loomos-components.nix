@@ -15,17 +15,21 @@ loomos-rust-platform.buildRustPackage {
   installPhase = ''
     runHook preInstall
     mkdir -p $out/components
-    # 产物位置由 nixpkgs 构建钩子设置的 CARGO_TARGET_DIR 环境变量决定
-    # （构建钩子预设该值，产物不在 ./target 下，多轮实证）。
-    # 关键语法：NiX 双引号字符串整体插值——插值由「美元加花括号」触发，
-    # **连注释里的这种写法也会被插值**（本轮实证：注释里写了这种字面量，
-    # NiX 报 undefined variable 'VAR'）。反斜杠转义非法直接语法错误。
-    # 正确写法是不带花括号的美元变量，原样传给 shell 由 shell 展开。
-    # 多路径回退：优先钩子预设目录，回退工作目录 target 与 /build。
-    found=$(find "$CARGO_TARGET_DIR" -name '*.wasm' -type f 2>/dev/null | head -1)
+    # nixpkgs 的 cargo 构建钩子预设了 CARGO_TARGET_DIR（产物不在 ./target
+    # 下，多轮实证），但钩子内的 export 不跨 phase 传给 installPhase。
+    # 语法要点（多轮 CI 实证）：
+    # - NiX 双引号字符串整体插值，美元加花括号恒被求值（注释内的写法也
+    #   不例外，实测报 undefined variable）
+    # - 反斜杠加美元是合法 NiX 转义，产生字面美元符号，转义后的写法在
+    #   NiX 源里合法、由 shell 展开
+    # - 无花括号的美元变量原样传给 shell，但未定义时 set -u 直接报错
+    # 策略：cdir 取环境变量（默认空），依次回退 $out/target、target、/build。
+    cdir=\${CARGO_TARGET_DIR:-}
+    found=$(find "$cdir" -name '*.wasm' -type f 2>/dev/null | head -1)
+    [ -n "$found" ] || found=$(find $out/target -name '*.wasm' -type f 2>/dev/null | head -1)
     [ -n "$found" ] || found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
     [ -n "$found" ] || found=$(find /build -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || { echo "未产出 .wasm 组件（CARGO_TARGET_DIR=$CARGO_TARGET_DIR）"; find target /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
+    [ -n "$found" ] || { echo "未产出 .wasm 组件（cdir=$cdir，查找 $out/target）"; find $out/target target /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
     cp "$found" $out/components/
     runHook postInstall
   '';
