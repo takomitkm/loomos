@@ -31,11 +31,12 @@ stdenv.mkDerivation {
     runHook preInstall
     mkdir -p $out/bin
     # CMake 构建目录可能是 sourceRoot 下的 build/ 或 Nix 全局 /build。
-    # 产物 wamrc 是**符号链接**（指向 wamrc-<version>）——find -type f 不匹配
-    # 链接，必须去掉类型限制（CI 实证：find -type f 对 CMake 生成的 wamrc
-    # 链接永远 miss，而产物就在当前目录）。
-    found=$(find . /build -name 'wamrc*' 2>/dev/null | head -1)
-    [ -n "$found" ] || { echo "wamrc 未产出（搜索范围: . /build）"; ls -R . 2>/dev/null | head -30; exit 1; }
+    # 产物 wamrc 是**符号链接**（指向 wamrc-<version>）：
+    # - 必须匹配链接（-type f 永远 miss，CI 实证）
+    # - 必须限定精确名（wamrc* 会先命中 CMakeFiles/wamrc.dir **目录**，
+    #   cp 报 'omitting directory'，本轮实证）
+    found=$(find . /build -name wamrc \( -type f -o -type l \) 2>/dev/null | head -1)
+    [ -n "$found" ] || { echo "wamrc 未产出（搜索范围: . /build，精确名 wamrc，文件或链接）"; ls -la . 2>/dev/null | head -30; exit 1; }
     # cp -L 跟随符号链接复制真实内容
     cp -L "$found" $out/bin/wamrc
     runHook postInstall

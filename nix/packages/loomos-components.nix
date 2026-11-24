@@ -9,14 +9,12 @@ loomos-rust-platform.buildRustPackage {
   src = lib.cleanSource ../..;
   cargoLock.lockFile = ../../Cargo.lock;
 
-  # 显式钉死 cargo 输出目录为工作目录的 target/——nixpkgs 的构建环境可能预设
-  # CARGO_TARGET_DIR 指向 Nix Store 路径（此前 installPhase 在 /build 下
-  # 找不到 .wasm 实证）。NiX 层指定覆盖环境值，产物位置确定可定位。
-  CARGO_TARGET_DIR = "target";
-
-  # 只构建组件 crate（workspace 其余成员是 Native Host / 基准，另行打包）
+  # 钉死 cargo 输出目录为工作目录的 target/——nixpkgs 的 buildRustPackage
+  # 构建钩子会预设自己的 CARGO_TARGET_DIR（指向 Nix Store 路径），
+  # 产物不在 ./target 下（多轮实证）。用 cargo 自身的 --target-dir 旗标
+  # （cargo 保证支持，不依赖 nixpkgs 选项名），产物位置确定可定位。
   buildPhaseCargoCommand =
-    "cargo build --release -p loomos-nlu-wasm-wrap --target wasm32-wasip1";
+    "cargo build --release --target-dir target -p loomos-nlu-wasm-wrap --target wasm32-wasip1";
   installPhase = ''
     runHook preInstall
     mkdir -p $out/components
