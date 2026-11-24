@@ -15,21 +15,17 @@ loomos-rust-platform.buildRustPackage {
   installPhase = ''
     runHook preInstall
     mkdir -p $out/components
-    # nixpkgs 的 cargo 构建钩子预设了 CARGO_TARGET_DIR（产物不在 ./target
-    # 下，多轮实证），但钩子内的 export 不跨 phase 传给 installPhase。
     # 语法要点（多轮 CI 实证）：
-    # - NiX 双引号字符串整体插值，美元加花括号恒被求值（注释内的写法也
-    #   不例外，实测报 undefined variable）
-    # - 反斜杠加美元是合法 NiX 转义，产生字面美元符号，转义后的写法在
-    #   NiX 源里合法、由 shell 展开
-    # - 无花括号的美元变量原样传给 shell，但未定义时 set -u 直接报错
-    # 策略：cdir 取环境变量（默认空），依次回退 $out/target、target、/build。
-    cdir=\${CARGO_TARGET_DIR:-}
-    found=$(find "$cdir" -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || found=$(find $out/target -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || found=$(find /build -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || { echo "未产出 .wasm 组件（cdir=$cdir，查找 $out/target）"; find $out/target target /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
+    # - NiX 缩进字符串整体插值：美元符加花括号在求值期被展开，注释内的写法
+    #   也不例外（实测报 undefined variable）；反斜杠转义美元符在本版本不
+    #   可靠（实测 syntax error）——故本块彻底不出现「美元符加花括号」组合
+    # - 无花括号的美元变量原样传给 shell 展开；但 cargo 钩子在 buildPhase 内
+    #   覆写目标目录且其 export 不跨 phase，installPhase 无法预知产物落点
+    # 策略：构建沙箱内唯一 loomos_nlu_wasm_wrap.wasm 即正本——跨挂载点全盘
+    # 定位；剪除 /nix（store 只读，产物必在沙箱根文件系统）与伪文件系统
+    # /proc /sys /dev /run（避免误扫与耗时）
+    found=$(find / \( -path /nix -o -path /proc -o -path /sys -o -path /dev -o -path /run \) -prune -o -name 'loomos_nlu_wasm_wrap.wasm' -type f -print 2>/dev/null | head -1)
+    [ -n "$found" ] || { echo "未产出 .wasm 组件（全盘搜索 loomos_nlu_wasm_wrap.wasm 无果）"; find / \( -path /nix -o -path /proc -o -path /sys -o -path /dev -o -path /run \) -prune -o -name '*.wasm' -type f -print 2>/dev/null | head; exit 1; }
     cp "$found" $out/components/
     runHook postInstall
   '';
