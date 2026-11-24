@@ -13,7 +13,7 @@ jobs:
     # Host CI（architecture/08 §8.5）：fmt / clippy / test
     # timeout 兜底：fresh runner 全量编译 18 crates+测试二进制偏长，
     # 超时直接失败给出诊断（默认 3600min 无法暴露卡死）
-    timeout-minutes: 90
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
