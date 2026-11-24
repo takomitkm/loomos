@@ -12,7 +12,7 @@
     device = "/dev/disk/by-uuid/loomos-root-dev";
     fsType = "ext4";
   };
-  boot.loader.grub.devices = "/dev/sda";
+  boot.loader.grub.devices = [ "/dev/sda" ];
 
   # SSH 留空（部署方按需启用）；不预置任何秘密
   # 网络策略 networking.nix 在 P5 随镜像工作展开

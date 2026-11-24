@@ -12,5 +12,5 @@
     device = "/dev/disk/by-uuid/loomos-root-dev";
     fsType = "ext4";
   };
-  boot.loader.grub.devices = "/dev/sda";
+  boot.loader.grub.devices = [ "/dev/sda" ];
 }

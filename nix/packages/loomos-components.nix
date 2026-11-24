@@ -15,9 +15,11 @@ loomos-rust-platform.buildRustPackage {
   installPhase = ''
     runHook preInstall
     mkdir -p $out/components
-    found=$(find target/wasm32-wasip1/release -maxdepth 1 -name '*.wasm' -type f || true)
-    [ -n "$found" ] || { echo "未产出 .wasm 组件"; exit 1; }
-    cp $found $out/components/
+    # 产物路径兜底：cargo 输出可能因 CARGO_TARGET_DIR/配置文件变化落到子目录，
+    # find 不设深度上限；仍空则报错（组件包必须含 .wasm 正本）
+    found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
+    [ -n "$found" ] || { echo "未产出 .wasm 组件"; find . -name '*.wasm' 2>/dev/null | head; exit 1; }
+    cp "$found" $out/components/
     runHook postInstall
   '';
 

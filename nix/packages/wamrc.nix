@@ -20,6 +20,13 @@ stdenv.mkDerivation {
   nativeBuildInputs = [ cmake ];
   buildInputs = [ llvmPackages_18.llvm ];
 
+  cmakeFlags = [
+    # 使用 Nix 提供的外部 LLVM（buildInputs），不探测上游捆绑的 core/deps/llvm/build
+    # （CI 实证：不设此旗标时 llvm_env.cmake:31 报 'Cannot find LLVM dir'）
+    "-DWAMR_BUILD_WITH_CUSTOM_LLVM=1"
+    "-DLLVM_DIR=${llvmPackages_18.llvm}/lib/cmake/llvm"
+  ];
+
   installPhase = ''
     runHook preInstall
     mkdir -p $out/bin
