@@ -9,21 +9,24 @@ loomos-rust-platform.buildRustPackage {
   src = lib.cleanSource ../..;
   cargoLock.lockFile = ../../Cargo.lock;
 
+  # 显式钉死 cargo 输出目录为工作目录的 target/——nixpkgs 的构建环境可能预设
+  # CARGO_TARGET_DIR 指向 Nix Store 路径（此前 installPhase 在 /build 下
+  # 找不到 .wasm 实证）。NiX 层指定覆盖环境值，产物位置确定可定位。
+  CARGO_TARGET_DIR = "target";
+
   # 只构建组件 crate（workspace 其余成员是 Native Host / 基准，另行打包）
   buildPhaseCargoCommand =
     "cargo build --release -p loomos-nlu-wasm-wrap --target wasm32-wasip1";
   installPhase = ''
     runHook preInstall
     mkdir -p $out/components
-    # Nix 的 cargo 输出目录由 CARGO_TARGET_DIR 决定（可能指向 Nix Store 路径，
-    # 不在 /build 内——此前 find /build 未命中实证）。
-    # 关键：NiX '' 字符串中 ${...} 是 NiX 插值，不是 shell 变量——
-    #   - 写 ${CARGO_TARGET_DIR} → NiX 报 'undefined variable'
-    #   - 写 ${CARGO_TARGET_DIR:-} → NiX 语法错误
-    # 必须转义为 \$CARGO_TARGET_DIR 让 shell 拿到字面量，并给默认值回退 /build。
-    found=$(find "\${CARGO_TARGET_DIR:-/build}" -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || { echo "未产出 .wasm 组件"; find /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
+    # 产物位置由上方 CARGO_TARGET_DIR=target 钉死（./target 相对工作目录）。
+    # 纪律：NiX 双引号字符串里美元符号加花括号是 NiX 插值（裸写报
+    # undefined variable，反斜杠转义非法直接语法错误）——本 installPhase
+    # 不引用任何 shell 变量。
+    found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
+    [ -n "$found" ] || found=$(find /build -name '*.wasm' -type f 2>/dev/null | head -1)
+    [ -n "$found" ] || { echo "未产出 .wasm 组件"; find target /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
     cp "$found" $out/components/
     runHook postInstall
   '';
