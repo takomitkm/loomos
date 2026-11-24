@@ -283,8 +283,8 @@ mod tests {
 
     #[test]
     fn checker_policy_allows_only_listed_ifaces() {
-        let _g = guard();
         let s = system();
+        let _g = guard();
         GuestAbiBridge::install(s.clone());
         let core = installed().unwrap();
         // voice 允许
@@ -303,10 +303,10 @@ mod tests {
 
     #[test]
     fn policy_matches_actual_grants() {
-        let _g = guard();
         // 漂移测试：policy 声称的每个接口，真实 CapabilityStore 必须真能支撑——
         // device.command → 至少一个 DeviceCommand；config.read → 至少一个 ConfigRead
         let s = system();
+        let _g = guard();
         for p in POLICY {
             for iface in p.ifaces {
                 match *iface {
@@ -340,8 +340,8 @@ mod tests {
 
     #[test]
     fn config_get_missing_key_is_null_not_error() {
-        let _g = guard();
         let s = system();
+        let _g = guard();
         GuestAbiBridge::install(s.clone());
         let core = installed().unwrap();
         let v = core
@@ -358,8 +358,8 @@ mod tests {
 
     #[test]
     fn device_op_query_roundtrip_via_handles() {
-        let _g = guard();
         let s = system();
+        let _g = guard();
         GuestAbiBridge::install(s.clone());
         let core = installed().unwrap();
         // mock 提供者对 light.keting 支持 query（同步 Done）
@@ -389,8 +389,8 @@ mod tests {
 
     #[test]
     fn data_plane_slots_report_unsupported() {
-        let _g = guard();
         let s = system();
+        let _g = guard();
         GuestAbiBridge::install(s.clone());
         let core = installed().unwrap();
         assert_eq!(
@@ -406,9 +406,9 @@ mod tests {
     // 静止检查：HandleTable 被 import 保证非 dead-code（真实使用在 host_abi core 内）
     #[test]
     fn handle_table_type_in_use() {
-        let _g = guard();
         let _ = HandleTable::new();
         let s = system();
+        let _g = guard();
         GuestAbiBridge::install(s.clone());
         assert!(loomos_wamr::host_abi::installed().is_some());
     }

@@ -332,17 +332,28 @@ impl System {
         let supervisor = Mutex::new(supervisor);
 
         // ---- Linux Backend 探针（B 类 OS 代劳；施加后读回验证，如实上报）----
-        let probe_budget = loomos_runtime::resource::CpuBudget {
-            runtime_us: 30_000,
-            period_us: 100_000,
-            deadline_us: 90_000,
-        };
-        let probe_cores = loomos_runtime::resource::CoreSet::new(vec![0, 1], 4)
-            .map_err(|e| format!("探测核集合非法: {e}"))?;
-        let enforcement =
-            loomos_runtime::platform::probe(Some(&probe_budget), 512 * 1024 * 1024, &probe_cores);
-        for r in &enforcement {
-            tracing::info!(item = %r.item, level = %r.level, evidence = %r.evidence, "enforcement probe");
+        // **测试进程内不施加**：probe 在 Linux 上真实 setrlimit(RLIMIT_AS) ——
+        // 进程级不可自恢复，会锁死 cargo test 同二进制的后续测试线程
+        // （CI ubuntu 实证：loomosd abi 测试 4 项全挂 >60s）。生产路径照常执行；
+        // 测试断言只验证装配语义，不验证进程级强制（该语义由 runtime 探针的
+        // 子进程隔离测试覆盖）。
+        #[cfg(not(test))]
+        {
+            let probe_budget = loomos_runtime::resource::CpuBudget {
+                runtime_us: 30_000,
+                period_us: 100_000,
+                deadline_us: 90_000,
+            };
+            let probe_cores = loomos_runtime::resource::CoreSet::new(vec![0, 1], 4)
+                .map_err(|e| format!("探测核集合非法: {e}"))?;
+            let enforcement = loomos_runtime::platform::probe(
+                Some(&probe_budget),
+                512 * 1024 * 1024,
+                &probe_cores,
+            );
+            for r in &enforcement {
+                tracing::info!(item = %r.item, level = %r.level, evidence = %r.evidence, "enforcement probe");
+            }
         }
 
         events.lock().unwrap().append(
