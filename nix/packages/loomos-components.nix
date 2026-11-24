@@ -9,22 +9,23 @@ loomos-rust-platform.buildRustPackage {
   src = lib.cleanSource ../..;
   cargoLock.lockFile = ../../Cargo.lock;
 
-  # 钉死 cargo 输出目录为工作目录的 target/——nixpkgs 的 buildRustPackage
-  # 构建钩子会预设自己的 CARGO_TARGET_DIR（指向 Nix Store 路径），
-  # 产物不在 ./target 下（多轮实证）。用 cargo 自身的 --target-dir 旗标
-  # （cargo 保证支持，不依赖 nixpkgs 选项名），产物位置确定可定位。
+  # 只构建组件 crate（workspace 其余成员是 Native Host / 基准，另行打包）
   buildPhaseCargoCommand =
-    "cargo build --release --target-dir target -p loomos-nlu-wasm-wrap --target wasm32-wasip1";
+    "cargo build --release -p loomos-nlu-wasm-wrap --target wasm32-wasip1";
   installPhase = ''
     runHook preInstall
     mkdir -p $out/components
-    # 产物位置由上方 CARGO_TARGET_DIR=target 钉死（./target 相对工作目录）。
-    # 纪律：NiX 双引号字符串里美元符号加花括号是 NiX 插值（裸写报
-    # undefined variable，反斜杠转义非法直接语法错误）——本 installPhase
-    # 不引用任何 shell 变量。
-    found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
+    # 产物位置由 nixpkgs 构建钩子设置的 CARGO_TARGET_DIR 环境变量决定
+    # （构建钩子预设该值，产物不在 ./target 下，多轮实证）。
+    # 关键语法：NiX 双引号字符串里插值只由 "美元加花括号" 触发——
+    # 写 "${VAR}" 触发插值报 undefined variable，反斜杠转义非法报
+    # 语法错误；**不带花括号的 "$VAR" 原样传给 shell**，由 shell 展开。
+    # 这正是之前几轮反复报错、从未命中正确写法的坑。
+    # 多路径回退：优先钩子预设目录，回退工作目录 target 与 /build。
+    found=$(find "$CARGO_TARGET_DIR" -name '*.wasm' -type f 2>/dev/null | head -1)
+    [ -n "$found" ] || found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
     [ -n "$found" ] || found=$(find /build -name '*.wasm' -type f 2>/dev/null | head -1)
-    [ -n "$found" ] || { echo "未产出 .wasm 组件"; find target /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
+    [ -n "$found" ] || { echo "未产出 .wasm 组件（CARGO_TARGET_DIR=$CARGO_TARGET_DIR）"; find target /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
     cp "$found" $out/components/
     runHook postInstall
   '';
