@@ -15,14 +15,13 @@ loomos-rust-platform.buildRustPackage {
   installPhase = ''
     runHook preInstall
     mkdir -p $out/components
-    # Nix 的 cargo 输出目录由 CARGO_TARGET_DIR 决定；构建在 /build 下进行。
-    # 宽范围搜索（CARGO_TARGET_DIR + target + /build），失败时打印诊断。
-    # 注意：Nix 构建 shell 开 set -u，未定义变量必须默认展开（否则报
-    # 'undefined variable'）。
-    if [ -n "${CARGO_TARGET_DIR:-}" ]; then
-      found=$(find "$CARGO_TARGET_DIR" -name '*.wasm' -type f 2>/dev/null | head -1)
-    fi
-    [ -n "$found" ] || found=$(find /build -name '*.wasm' -type f 2>/dev/null | head -1)
+    # Nix 的 cargo 输出目录由 CARGO_TARGET_DIR 决定（可能指向 Nix Store 路径，
+    # 不在 /build 内——此前 find /build 未命中实证）。
+    # 关键：NiX '' 字符串中 ${...} 是 NiX 插值，不是 shell 变量——
+    #   - 写 ${CARGO_TARGET_DIR} → NiX 报 'undefined variable'
+    #   - 写 ${CARGO_TARGET_DIR:-} → NiX 语法错误
+    # 必须转义为 \$CARGO_TARGET_DIR 让 shell 拿到字面量，并给默认值回退 /build。
+    found=$(find "\${CARGO_TARGET_DIR:-/build}" -name '*.wasm' -type f 2>/dev/null | head -1)
     [ -n "$found" ] || found=$(find target -name '*.wasm' -type f 2>/dev/null | head -1)
     [ -n "$found" ] || { echo "未产出 .wasm 组件"; find /build -name '*.wasm' -type f 2>/dev/null | head -5; exit 1; }
     cp "$found" $out/components/
