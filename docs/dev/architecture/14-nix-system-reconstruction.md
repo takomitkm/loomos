@@ -17,7 +17,7 @@ DeviceAllow、systemd 沙箱项、内核命令行）；应用级能力检查在 
 内核级强制在 Linux。内核缺机制（cgroups/seccomp/LSM）→ 如实 `unsupported` /
 `best_effort`（architecture/11 纪律），Nix 无法凭配置创造内核能力。
 
-## 14.2 仓库 Nix 结构（P0 已交付，Unverified 待 CI）
+## 14.2 仓库 Nix 结构（P0 已交付并经 CI 验证——2026-11-27 run 46030198570 四包全绿）
 
 ```
 flake.nix                    # 钉死 nixpkgs(nixos-26.05) / rust-overlay(1.99.1+wasm32-wasip1) / WAMR 源码

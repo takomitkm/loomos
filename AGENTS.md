@@ -17,7 +17,7 @@
 bash agent/run-prototype.sh          # 全流程：test → fixtures → smoke → 报告
 bash agent/run-prototype.sh --fast   # 跳过已通过的测试（仅快速 smoke）
 
-# Nix 验证（Linux/CI；Unverified 待首跑）
+# Nix 验证（CI 已全绿——2026-11-27 run 46030198570，四包 + fmt + 防漂移）
 nix flake check                      # 评估 + 构建 + 测试 + fmt + 工具链防漂移
 nix build                            # Native Host（构建即跑全仓测试）
 ```

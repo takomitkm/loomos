@@ -1,7 +1,8 @@
 # nix/ — loomos 系统重建与包管理（ADR-012）
 
-> 证据等级：**Unverified（待 CI）**。本机（Windows）无 Nix；`nix flake check` /
-> `nix build` 在 Linux CI 执行。flake.lock 由首次 `nix flake lock` 生成后入库。
+> 证据等级：**已验证（CI）**。`nix flake check -L` + 四包 `nix build` 于 Linux CI
+> 全绿（run 46030198570，2026-11-27，commit 25fd929）。flake.lock 已入库（736a3bd）。
+> 板端镜像/A/B 分区仍 Unverified（P5，见 nix/images/README.md）。
 
 ## 结构
 
@@ -40,7 +41,7 @@ nix build                    # = .#loomos-host（含 workspace cargo test ——
 nix build .#loomos-wamr      # libiwasm.a（wamr-link 开发档链接用）
 nix build .#loomos-wamrc     # wamrc
 nix build .#loomos-components  # wasm32-wasip1 组件
-nix build .#loomos-host-aarch64    # 交叉构建 aarch64 Host（Unverified，待 CI）
+nix build .#loomos-host-aarch64    # 交叉构建 aarch64 Host（flake check 评估通过）
 nix develop                  # 钉死工具链开发环境（rust 1.99.1 + wasm32-wasip1）
 nix run .#smoke              # agent/run-prototype.sh（钉死工具链）
 ```
@@ -67,16 +68,35 @@ flake.lock 独立重建 + 产物哈希比对（CI 承担，P0 后接入）。
 
 | 输入 | 值 |
 |---|---|
-| nixpkgs | github:NixOS/nixpkgs/nixos-26.05（flake.lock 生成后锁定） |
+| nixpkgs | github:NixOS/nixpkgs/nixos-26.05（flake.lock 已锁定：736a3bd） |
 | rust | 1.99.1（= rust-toolchain.toml；+ wasm32-wasip1 target） |
 | WAMR | main @ 06f6c8c6e64e75eee6b8a3ce06ac2c7d10d015bf（2026-11-20） |
-| LLVM/wamrc | llvmPackages_17（nixpkgs，随 flake.lock 锁定） |
+| LLVM/wamrc | llvmPackages_18（wamrc.nix；WAMR_BUILD_WITH_CUSTOM_LLVM=1） |
 | Cargo.lock | 仓库入库，cargoLock.lockFile 校验 |
 
-## 已知限制（Unverified 明细）
+## 已知限制（如实标注）
 
-- flake.lock 未生成（需 Linux/CI 首跑 `nix flake lock` 后入库）。
-- rust-overlay 的 1.99.1 钉死、makeRustPlatform 组合、aarch64 交叉：待 CI 验证。
-- loomos-host 的 Linux 全量 cargo test：Windows 侧 154+ 测试全绿；Linux 侧以
-  `nix build .#loomos-host` 首跑结果为准。
-- 板端镜像 / A/B 分区：P5，不在 P0（fmql30tai676h.nix 为可评估过渡占位）。
+- 板端镜像 / A/B 分区 / bootenv：P5 板端调查，不在 P0（fmql30tai676h.nix 为可评估过渡占位）。
+- 复现门（双干净 builder 独立重建 + 哈希比对）：CI 尚未接入（ADR-012 §决定 6）。
+- home/executor/audio/vision 业务组件迁移：N3 剩余项（接入点已留）。
+
+## NiX 实证教训（多轮 CI 实锤，写新 derivation 前必读）
+
+1. **`buildRustPackage` 没有 `buildPhaseCargoCommand` 属性**——写了被静默忽略，
+   钩子按默认跑全 workspace host 构建，cdylib 产出 `.so` 而非 `.wasm`。
+   正解：显式设 `buildPhase` 完全接管（cargo-build-hook 仅在 buildPhase 未设时
+   才接管，且硬编码 `--target @rustcTargetSpec@`=host；`cargoBuildFlags` 只能追加
+   旗标，追加第二个 `--target` 报重复）。参见 loomos-components.nix。
+2. **'' 块内「美元符加花括号」恒被 NiX 求值期插值，注释里也不例外**；
+   `\${` 转义在本 NiX 版本不可靠（官方文档称合法，实测仍报 syntax error）。
+   需要引用 `$out` 等时用无花括号 `$out`，彻底不出现该组合。
+3. **CMake 产物 wamrc 是符号链接**（指向 wamrc-<version>）：`find -type f` 永远
+   miss，须允许 `-type l` 且用精确名（`wamrc*` 会先命中 CMakeFiles 目录）+ `cp -L`。
+4. **wamrc 的 LLVM**：须传 `-DWAMR_BUILD_WITH_CUSTOM_LLVM=1` +
+   `-DLLVM_DIR=<llvmPackages_18.llvm>/lib/cmake/llvm`，否则上游探测捆绑目录报
+   'Cannot find LLVM dir'。
+5. **NixOS 配置可引导性断言**（`nix flake check` 硬检查）：必须声明
+   `fileSystems."/"`（device+fsType）与 `boot.loader.grub.devices`（**list of
+   string**，单字符串报 TypeError）。
+6. 本机（Windows）无 Nix；本地防线用 `python -I scripts/check-nix-interpolation.py`
+   静态扫描 '' 块插值（启发式，不替代 `nix flake check`）。

@@ -50,7 +50,7 @@ cargo run -p loomos-cli -- serve
 curl -X POST http://127.0.0.1:10900/handle_text -d '{"text":"小克，打开客厅的灯"}'
 ```
 
-Nix 构建（Linux/CI；Unverified 待首跑——见 [nix/README.md](nix/README.md)）：
+Nix 构建（CI 已全绿——2026-11-27 run 46030198570，见 [nix/README.md](nix/README.md)）：
 
 ```bash
 nix flake check              # 评估 + 构建 + 测试 + 工具链防漂移
@@ -83,7 +83,7 @@ nix develop                  # 钉死工具链开发环境
 | `deploy/` | 板上部署工件：systemd 非 root 单元 / 看门狗 DT 片段 / install 脚本（未上板验证，上板后回填 EVIDENCE） |
 | `manifests/` | 组件 Manifest（TOML）：voice-pipeline / vision |
 | `fixtures/` · `reports/` | 语音夹具 / 验收报告（由脚本生成，不得手改） |
-| `flake.nix` · `nix/` | **Nix 系统重建（ADR-012）**：钉死 nixpkgs/Rust 1.99.1/WAMR@06f6c8c；loomos-host/wamr/wamrc/components 包；services.loomos NixOS 模块；nix/images RAUC bundle 组装骨架；厂商工件登记（证据等级 Unverified，待 CI） |
+| `flake.nix` · `nix/` | **Nix 系统重建（ADR-012）**：钉死 nixpkgs/Rust 1.99.1/WAMR@06f6c8c；loomos-host/wamr/wamrc/components 包；services.loomos NixOS 模块；nix/images RAUC bundle 组装骨架；厂商工件登记（**CI 已验证**——`nix flake check` 四包全绿，run 46030198570；板端镜像仍 Unverified/P5） |
 | `docs/dev/archive/` | 已否决方案的归档（0001：权威迁入 Wasm——错在哪/为何错/被什么取代） |
 
 ## 原型验证矩阵（architecture/08 §8.5 三层）

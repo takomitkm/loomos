@@ -132,19 +132,23 @@ flowchart TD
 
 任何模块从“计划”变为“实现”前，必须明确：调用方、输入/输出、权限边界、故障行为、目标板验收方式。任何技术选型替换必须记录：替换原因、现有方案不足、性能/内存/维护代价、回退方案。
 
-## 2.5 平台化路线 N0–N5（2026-11-22 增补：统一 Wasm 执行 + Nix 系统重建）
+## 2.5 平台化路线 N0–N5（2026-11-22 增补：统一 Wasm 执行 + Nix 系统重建；2026-11-27 CI 验收闭环）
 
 > 裁定：ADR-011 v1.1 / ADR-012 / ADR-013；架构细则：14/15/16。
 > 与 2.2 的 P0–P10 并行推进，不替代（OS Core 契约层是平台化的地基）。
+>
+> **验收证据（run 46030198570，2026-11-27 UTC，commit 25fd929）**：platform.yml 六 job
+> 全绿（nix-flake 四包 / wamr-matrix 三平台 / parity / wasm-components-and-aot）+
+> ci.yml 四 job 全绿（fmt / host-ubuntu / host-windows / cross）。
 
-| 阶段 | 内容 | 状态（2026-11-22） |
+| 阶段 | 内容 | 状态（2026-11-27 CI 验收） |
 |---|---|---|
-| N0 | Nix 可复现地基：钉死 flake（nixpkgs/rust 1.99.1/WAMR@06f6c8c）、host/wamr/wamrc/components 包、devShell、checks（fmt+工具链防漂移） | **已交付，Unverified**（本机无 Nix；flake.lock 与 CI 首跑待做） |
-| N1 | WAMR Runtime Host 完成：真加载/实例生命周期/原子内存预算/AOT 兼容键 fail-closed；FFI 集中 loomos-wamr-sys 第三可信边界 | **已交付**（宿主测试全绿；wamr-link 真链路待 CI） |
-| N2 | Host ABI v1：11 接口 loomos.<iface>_v1、稳定错误码、CapabilityChecker、属主句柄表、Guest 内存 validate+复制语义 | **已交付**（stub 档全测；真注册待 CI） |
-| N3 | 业务组件迁移：nlu→home→executor→audio/vision 业务逻辑；组件包格式+checksum；与 native 基线输出等价校验 | **框架已交付**（2026-11-22）：loomisd HostAbiCore 权威桥（能力两层模型+device_op 真链路）；组件包格式（sha256 全量验签）；NLU Guest Host ABI 客户端 + ab_parse_via_host 奇偶导出；home/executor/audio/vision 业务迁移未开始 |
-| N4 | 多平台：Linux x86_64/AArch64（nix 已布）、Windows/macOS 原生 runner、交叉构建、QEMU aarch64 对比测试 | **CI 矩阵已交付**（2026-11-22）：platform.yml 三平台 wamr-matrix（真构建 libiwasm→wamr-link 全测→E2E 真加载）+ parity job（三平台 checksum 比对=自动验收）+ wamrc aarch64 AOT 魔数校验；首次 CI 结果待跑 |
-| N5 | NixOS/全 Nix 镜像 + A/B：厂商内核工件接入、RAUC、槽位回退演练、签名发布、Store GC | **状态机框架已交付**（2026-11-22）：loomis-ab（13 步事务/引导计数回退/迁移纪律类型闸门——§16.4 矩阵 25 测试全绿）+ nix/images RAUC bundle 组装骨架；真实镜像/分区/bootenv = P5 板端调查（Unverified） |
+| N0 | Nix 可复现地基：钉死 flake（nixpkgs/rust 1.99.1/WAMR@06f6c8c）、host/wamr/wamrc/components 包、devShell、checks（fmt+工具链防漂移） | **验收通过**：`nix flake check -L` 四包（loomos-wamr/wamrc/components/host）全绿；flake.lock 已入库（736a3bd）；NixOS 配置可引导性断言通过 |
+| N1 | WAMR Runtime Host 完成：真加载/实例生命周期/原子内存预算/AOT 兼容键 fail-closed；FFI 集中 loomos-wamr-sys 第三可信边界 | **验收通过**：三平台（ubuntu/macos/windows）真构建 libiwasm→wamr-link 全测→E2E 真加载全绿；AOT 兼容键 fail-closed 测试随 host 包全绿 |
+| N2 | Host ABI v1：11 接口 loomos.<iface>_v1、稳定错误码、CapabilityChecker、属主句柄表、Guest 内存 validate+复制语义 | **验收通过**：三平台 E2E 走 Host ABI 真通道（NativeSymbol 注册→Guest 调用）；parity checksum `c9be13246d740b60` 三平台逐字节一致 |
+| N3 | 业务组件迁移：nlu→home→executor→audio/vision 业务逻辑；组件包格式+checksum；与 native 基线输出等价校验 | **NLU 链路验收通过**（loomisd HostAbiCore 权威桥 + 组件包 sha256 验签 + NLU Guest Host ABI 客户端，parity 三平台一致）；home/executor/audio/vision 业务迁移未开始（框架接入点已留） |
+| N4 | 多平台：Linux x86_64/AArch64（nix 已布）、Windows/macOS 原生 runner、交叉构建、QEMU aarch64 对比测试 | **验收通过**：wamr-matrix 三平台原生 runner 全绿 ×多轮；ci cross（QEMU aarch64）绿；nix flake check 覆盖 loomos-host-aarch64 交叉评估 |
+| N5 | NixOS/全 Nix 镜像 + A/B：厂商内核工件接入、RAUC、槽位回退演练、签名发布、Store GC | **状态机框架已交付**：loomis-ab（13 步事务/引导计数回退/迁移纪律类型闸门——§16.4 矩阵 25 测试全绿）+ nix/images RAUC bundle 组装骨架；真实镜像/分区/bootenv = P5 板端调查（Unverified） |
 
 验收纪律：每阶段独立提交+推送；文档声称的实现必须有对应代码与测试；
 板级事实 Unverified 如实标注，不以 QEMU 冒充板测。
